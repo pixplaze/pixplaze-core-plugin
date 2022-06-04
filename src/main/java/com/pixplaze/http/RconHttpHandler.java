@@ -1,18 +1,19 @@
 package com.pixplaze.http;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
 import com.pixplaze.plugin.PixplazeRootsAPI;
 import com.pixplaze.util.Utils;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.URI;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
@@ -50,14 +51,17 @@ public class RconHttpHandler implements HttpHandler {
             params = parseParams(exchange.getRequestURI().getQuery());
         } catch (Exception e) {
             sendResponse(exchange, 400, rb.setError("ParamsParseError").setMessage("Error occurred while parsing params").getFinal());
+            exchange.close();
             return;
         }
 
         if (!params.containsKey("access-token")) {
             sendResponse(exchange, 401, rb.setError("InvalidTokenError").setMessage("No token!").getFinal());
+            exchange.close();
             return;
         } else if (!Utils.checkToken(params.get("access-token"))) {
             sendResponse(exchange, 401, rb.setError("InvalidTokenError").setMessage("Access token is invalid").getFinal());
+            exchange.close();
             return;
         }
 
@@ -70,15 +74,26 @@ public class RconHttpHandler implements HttpHandler {
 
         if (count == 0) {
             sendResponse(exchange, 401, rb.setError("ZeroCountError").setMessage("Param count cannot be zero").getFinal());
+            exchange.close();
             return;
         }
 
         List<String> lines = PixplazeRootsAPI.getInstance().getConsoleBuffer().getHistory(count);
-        JSONObject jsonResponse = new JSONObject();
-        jsonResponse.put("lines", lines);
+
+        // fixme
+        Gson gson = new Gson();
+        JsonObject jsonResponse = new JsonObject();
+
+        Type listType = new TypeToken<List<String>>() {}.getType();
+        JsonArray jsonLines = gson.toJsonTree(lines, listType).getAsJsonArray();
+
+        jsonResponse.add("lines", jsonLines);
+        //fixme
+
         rb.setResponse(jsonResponse).setMessage("Command request success");
 
         sendResponse(exchange, 200, rb.getFinal());
+        exchange.close();
     }
 
     private void handleCommandRequest(HttpExchange exchange) throws IOException {
@@ -89,20 +104,24 @@ public class RconHttpHandler implements HttpHandler {
             params = parseParams(exchange.getRequestURI().getQuery());
         } catch (Exception e) {
             sendResponse(exchange, 400, rb.setError("ParamsParseError").setMessage("Error occurred while parsing params").getFinal());
+            exchange.close();
             return;
         }
 
         if (!params.containsKey("access-token")) {
             sendResponse(exchange, 401, rb.setError("InvalidTokenError").setMessage("No token!").getFinal());
+            exchange.close();
             return;
         } else if (!Utils.checkToken(params.get("access-token"))) {
             sendResponse(exchange, 401, rb.setError("InvalidTokenError").setMessage("Access token is invalid").getFinal());
+            exchange.close();
             return;
         }
 
         String line = "";
         if (!params.containsKey("line")) {
             sendResponse(exchange, 401, rb.setError("InvalidParamError").setMessage("No param line").getFinal());
+            exchange.close();
             return;
         } else {
             line = params.get("line").replace("%20"," ");
@@ -110,14 +129,18 @@ public class RconHttpHandler implements HttpHandler {
 
         if ("".equals(line)) {
             sendResponse(exchange, 401, rb.setError("InvalidParamError").setMessage("line is empty").getFinal());
+            exchange.close();
             return;
         }
 
         try {
-            dispatchCommand(plugin.getServer().getConsoleSender(), line);
+//            dispatchCommand(plugin.getServer().getConsoleSender(), line);
+            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), line);
             sendResponse(exchange, 200, rb.setMessage("Command sent successfully").getFinal());
+            exchange.close();
         } catch (Exception e) {
             sendResponse(exchange, 200, rb.setMessage("Command execution error").getFinal());
+            exchange.close();
         }
     }
 
@@ -145,12 +168,12 @@ public class RconHttpHandler implements HttpHandler {
         return result;
     }
 
-    private void dispatchCommand(CommandSender sender, String command) {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                plugin.getServer().dispatchCommand(sender, command);
-            }
-        }.runTask(plugin);
-    }
+//    private void dispatchCommand(CommandSender sender, String command) {
+//        new BukkitRunnable() {
+//            @Override
+//            public void run() {
+//                plugin.getServer().dispatchCommand(sender, command);
+//            }
+//        }.runTask(plugin);
+//    }
 }

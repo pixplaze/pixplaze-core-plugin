@@ -1,11 +1,11 @@
 package com.pixplaze.http;
 
-import org.json.JSONObject;
+import com.google.gson.JsonObject;
 
 public class ResponseBodyBuilder {
 
     private String message = null;
-    private JSONObject response = null;
+    private JsonObject response = null;
     private String error = null;
 
     public ResponseBodyBuilder setMessage(String message) {
@@ -13,7 +13,7 @@ public class ResponseBodyBuilder {
         return this;
     }
 
-    public ResponseBodyBuilder setResponse(JSONObject response) {
+    public ResponseBodyBuilder setResponse(JsonObject response) {
         this.response = response;
         return this;
     }
@@ -27,7 +27,7 @@ public class ResponseBodyBuilder {
         return message;
     }
 
-    public JSONObject getResponse() {
+    public JsonObject getResponse() {
         return response;
     }
 
@@ -36,16 +36,16 @@ public class ResponseBodyBuilder {
     }
 
     public String getFinal() {
-        JSONObject bodyResult = new JSONObject();
+        JsonObject bodyResult = new JsonObject();
         if (message != null) {
-            bodyResult.put("message", message);
+            bodyResult.addProperty("message", message);
         }
         if (response != null) {
-            bodyResult.put("response", response);
+            bodyResult.add("response", response);
         }
         if (error != null) {
-            bodyResult.put("error", error);
+            bodyResult.addProperty("error", error);
         }
-        return bodyResult.toString(-1);
+        return bodyResult.getAsString();
     }
 }
