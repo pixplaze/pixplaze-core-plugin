@@ -22,6 +22,7 @@ import java.util.logging.Logger;
 public class RconHttpHandler implements HttpHandler {
 
     private final Logger logger = PixplazeRootsAPI.getInstance().getLogger();
+    private final PixplazeRootsAPI plugin = PixplazeRootsAPI.getInstance();
 
     private static final int MAX_LINES_COUNT = PixplazeRootsAPI.getInstance().getConsoleBuffer().getSize();
 
@@ -104,7 +105,7 @@ public class RconHttpHandler implements HttpHandler {
             sendResponse(exchange, 401, rb.setError("InvalidParamError").setMessage("No param line").getFinal());
             return;
         } else {
-            line = params.get("line");
+            line = params.get("line").replace("%20"," ");
         }
 
         if ("".equals(line)) {
@@ -113,10 +114,10 @@ public class RconHttpHandler implements HttpHandler {
         }
 
         try {
-            dispatchCommand(Bukkit.getConsoleSender(), line);
-            sendResponse(exchange, 200, rb.setMessage("Success execution").getFinal());
+            dispatchCommand(plugin.getServer().getConsoleSender(), line);
+            sendResponse(exchange, 200, rb.setMessage("Command sent successfully").getFinal());
         } catch (Exception e) {
-            sendResponse(exchange, 200, rb.setMessage("Failed command execution").getFinal());
+            sendResponse(exchange, 200, rb.setMessage("Command execution error").getFinal());
         }
     }
 
@@ -148,11 +149,8 @@ public class RconHttpHandler implements HttpHandler {
         new BukkitRunnable() {
             @Override
             public void run() {
-                logger.warning("Dispatching...");
-                if (Bukkit.getServer().dispatchCommand(sender, command)) {
-                    logger.warning("NO!");
-                }
+                plugin.getServer().dispatchCommand(sender, command);
             }
-        };
+        }.runTask(plugin);
     }
 }
