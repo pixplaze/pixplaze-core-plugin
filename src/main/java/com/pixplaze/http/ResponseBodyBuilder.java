@@ -46,6 +46,6 @@ public class ResponseBodyBuilder {
         if (error != null) {
             bodyResult.addProperty("error", error);
         }
-        return bodyResult.getAsString();
+        return bodyResult.toString();
     }
 }
