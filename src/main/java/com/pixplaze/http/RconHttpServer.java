@@ -6,12 +6,11 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.*;
 import java.util.Enumeration;
-import java.util.Iterator;
 import java.util.logging.Logger;
 
 public class RconHttpServer {
 
-    private HttpServer httpServer;
+    private static HttpServer httpServer;
     public Logger logger = PixplazeRootsAPI.getInstance().getLogger();
 
     public final String hostname;
@@ -30,7 +29,7 @@ public class RconHttpServer {
         hostname = address;
 
         try {
-            logger.warning("Starting PixplazeCore on: " + hostname);
+            logger.warning("Starting PixplazeCore on: %s:%d".formatted(hostname, port));
 
             httpServer = HttpServer.create(new InetSocketAddress(hostname, port), 0);
             httpServer.createContext("/rcon", new RconHttpHandler());
@@ -75,5 +74,13 @@ public class RconHttpServer {
 
     public void start() {
         httpServer.start();
+    }
+
+    public void stop(final int delay) {
+        httpServer.stop(delay);
+    }
+
+    public void stop() {
+        this.stop(0);
     }
 }

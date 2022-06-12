@@ -35,6 +35,7 @@ public class RconHttpHandler implements HttpHandler {
         logger.warning("Request by: " +  exchange.getProtocol());
         logger.warning("From: " +  exchange.getRemoteAddress());
         logger.warning("To: " +  exchange.getLocalAddress());
+        logger.warning("path: " +  exchange.getRequestURI());
 
         if ("GET".equals(method)) {
             if ("lines".equalsIgnoreCase(uriPath)) {
@@ -96,10 +97,10 @@ public class RconHttpHandler implements HttpHandler {
 
             rb.setResponse(jsonResponse).setMessage("Command request success");
 
-            logger.warning("NOT pidoor");
+//            logger.warning("NOT pidoor");
             sendResponse(exchange, 200, rb.getFinal());
         } catch (Exception e) {
-            logger.warning("pidoor");
+//            logger.warning("pidoor");
             logger.warning(e.getMessage());
             sendResponse(exchange, 500, rb.setError(e.getClass().getTypeName()).setMessage(e.getMessage()).getFinal());
         }
@@ -182,6 +183,6 @@ public class RconHttpHandler implements HttpHandler {
             public void run() {
                 plugin.getServer().dispatchCommand(sender, command);
             }
-        }.run();
+        }.runTask(plugin);
     }
 }

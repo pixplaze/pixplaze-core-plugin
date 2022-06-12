@@ -4,9 +4,10 @@ import com.pixplaze.http.RconHttpServer;
 import com.pixplaze.http.rcon.ConsoleBuffer;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public final class PixplazeRootsAPI extends JavaPlugin{
+public final class PixplazeRootsAPI extends JavaPlugin {
 
     private static PixplazeRootsAPI instance;
+    private static RconHttpServer rconServer;
 
     private ConsoleBuffer consoleBuffer;
 
@@ -23,12 +24,12 @@ public final class PixplazeRootsAPI extends JavaPlugin{
     @Override
     public void onEnable() {
         initConsoleBuffer();
-        initRconHttp();
+        getRconHttpServerInstance().start();
     }
 
     @Override
     public void onDisable() {
-
+        getRconHttpServerInstance().stop();
     }
 
     public ConsoleBuffer getConsoleBuffer() {
@@ -40,8 +41,10 @@ public final class PixplazeRootsAPI extends JavaPlugin{
         consoleBuffer.attachLogger();
     }
 
-    private void initRconHttp() {
-        RconHttpServer rconServer = new RconHttpServer(getConfig().getInt("http-rcon-port"));
-        rconServer.start();
+    private RconHttpServer getRconHttpServerInstance() {
+        if (rconServer == null) {
+            rconServer = new RconHttpServer(getConfig().getInt("http-rcon-port"));
+        }
+        return rconServer;
     }
 }
