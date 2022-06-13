@@ -35,6 +35,7 @@ public class RconHttpHandler implements HttpHandler {
         logger.warning("Request by: " +  exchange.getProtocol());
         logger.warning("From: " +  exchange.getRemoteAddress());
         logger.warning("To: " +  exchange.getLocalAddress());
+        logger.warning("method: " + exchange.getRequestMethod());
         logger.warning("path: " +  exchange.getRequestURI());
 
         if ("GET".equals(method)) {
@@ -47,6 +48,7 @@ public class RconHttpHandler implements HttpHandler {
                 handleCommandRequest(exchange);
             }
         }
+        exchange.close();
     }
 
     private void handleLinesRequest(HttpExchange exchange) throws IOException {
@@ -143,6 +145,7 @@ public class RconHttpHandler implements HttpHandler {
             dispatchCommand(plugin.getServer().getConsoleSender(), line);
             sendResponse(exchange, 200, rb.setMessage("Command sent successfully").getFinal());
         } catch (Exception e) {
+            logger.warning("[!!!]\terror on sending command!");
             sendResponse(exchange, 200, rb.setMessage("Command execution error").getFinal());
         }
     }
@@ -178,10 +181,16 @@ public class RconHttpHandler implements HttpHandler {
     }
 
     private void dispatchCommand(CommandSender sender, String command) {
+        logger.warning("requested server command");
         new BukkitRunnable() {
             @Override
             public void run() {
-                plugin.getServer().dispatchCommand(sender, command);
+                try {
+                    plugin.getServer().dispatchCommand(sender, command);
+                } catch (Exception e) {
+                    logger.warning(e.getMessage());
+                }
+                logger.warning("Command sended");
             }
         }.runTask(plugin);
     }
