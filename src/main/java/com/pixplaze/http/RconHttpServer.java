@@ -1,75 +1,41 @@
 package com.pixplaze.http;
 
+import com.pixplaze.exceptions.HttpServerException;
+import com.pixplaze.exceptions.InvalidAddressException;
+import com.pixplaze.exceptions.UnableToDefineLocalAddress;
 import com.pixplaze.plugin.PixplazeRootsAPI;
+import com.pixplaze.util.Inet;
 import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
 import java.net.*;
-import java.util.Enumeration;
 import java.util.logging.Logger;
 
 public class RconHttpServer {
 
-    private static HttpServer httpServer;
     public Logger logger = PixplazeRootsAPI.getInstance().getLogger();
+    private final HttpServer httpServer;
+    private final String address;
+    private final int port;
 
-    public final String hostname;
+    public RconHttpServer(String address, int port) throws  InvalidAddressException,
+                                                            UnableToDefineLocalAddress,
+                                                            HttpServerException {
+        if (address == null || address.isEmpty() || address.equalsIgnoreCase("auto"))
+            address = Inet.getLocalAddress();
+        else if (!Inet.isIpV4Valid(address))
+            throw new InvalidAddressException("Invalid ipv4 address: %s!".formatted(address));
 
-    public RconHttpServer(int port) {
-        String address = "";
+        this.address = address;
+        this.port = port;
 
         try {
-            address = getLocalAddress();
-        } catch (RuntimeException | SocketException e) {
-            logger.warning("Unable to define host address!");
-            logger.warning(e.getMessage());
-            address = "localhost";
-        }
-
-        hostname = address;
-
-        try {
-            logger.warning("Starting PixplazeCore on: %s:%d".formatted(hostname, port));
-
-            httpServer = HttpServer.create(new InetSocketAddress(hostname, port), 0);
+            httpServer = HttpServer.create(new InetSocketAddress(this.address, this.port), 0);
             httpServer.createContext("/rcon", new RconHttpHandler());
         } catch (IOException e) {;
-            logger.warning(e.getMessage());
+            throw new HttpServerException(
+                    "Can not create pixplaze core api server on address: %s:%d".formatted(address, port));
         }
-
-    }
-
-    public String verboseInterfaces() throws SocketException {
-        Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
-        StringBuilder stringBuilder = new StringBuilder();
-        while (interfaces.hasMoreElements()) {
-            Enumeration<InetAddress> addresses = interfaces.nextElement().getInetAddresses();
-            while (addresses.hasMoreElements()) {
-                InetAddress address = addresses.nextElement();
-                stringBuilder
-                        .append(address.getHostAddress())
-                        .append("SiteLocalAddress: ")
-                        .append(address.isSiteLocalAddress())
-                        .append("\n");
-            }
-        }
-        return stringBuilder.toString();
-    }
-
-    // TODO: Протестировать работу метода на RedHat Linux
-    public static String getLocalAddress() throws SocketException {
-        Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
-
-        while (interfaces.hasMoreElements()) {
-            Enumeration<InetAddress> addresses = interfaces.nextElement().getInetAddresses();
-            while (addresses.hasMoreElements()) {
-                InetAddress address = addresses.nextElement();
-                if (address.isSiteLocalAddress())
-                    return address.getHostAddress();
-            }
-        }
-        // TODO: Сделать проприетарное исключение
-        throw new RuntimeException("Unable to define local address!");
     }
 
     public void start() {
@@ -82,5 +48,13 @@ public class RconHttpServer {
 
     public void stop() {
         this.stop(0);
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public int getPort() {
+        return port;
     }
 }

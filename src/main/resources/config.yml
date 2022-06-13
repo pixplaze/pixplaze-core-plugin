@@ -1,2 +1,3 @@
 access-token: "YourToken"
-http-rcon-port: 25566
+http-listen-port: 25566
+http-listen-ip: auto
