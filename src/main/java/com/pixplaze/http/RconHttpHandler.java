@@ -27,8 +27,8 @@ public class RconHttpHandler implements HttpHandler {
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
-        String uriPath = exchange.getRequestURI().getPath().split("/")[2];
-        String method = exchange.getRequestMethod();
+        String requestURI = exchange.getRequestURI().getPath().split("/")[2];
+        String requestMethod = exchange.getRequestMethod();
 
         exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
 
@@ -38,13 +38,13 @@ public class RconHttpHandler implements HttpHandler {
         logger.warning("method: " + exchange.getRequestMethod());
         logger.warning("path: " +  exchange.getRequestURI());
 
-        if ("GET".equals(method)) {
-            if ("lines".equalsIgnoreCase(uriPath)) {
+        if ("GET".equals(requestMethod)) {
+            if ("lines".equalsIgnoreCase(requestURI)) {
                 handleLinesRequest(exchange);
             }
         }
-        if ("POST".equals(method)) {
-            if ("command".equalsIgnoreCase(uriPath)) {
+        if ("POST".equals(requestMethod)) {
+            if ("command".equalsIgnoreCase(requestURI)) {
                 handleCommandRequest(exchange);
             }
         }
