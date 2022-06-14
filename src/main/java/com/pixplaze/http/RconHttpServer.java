@@ -9,6 +9,7 @@ import com.pixplaze.exceptions.InvalidAddressException;
 import com.pixplaze.exceptions.CannotDefineAddressException;
 import com.pixplaze.plugin.PixplazeRootsAPI;
 import com.pixplaze.util.Inet;
+import com.pixplaze.util.Optional;
 import com.pixplaze.util.Utils;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -17,7 +18,6 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.lang.reflect.Method;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -84,21 +84,44 @@ public class RconHttpServer {
 
     public void annotate() {
         var allMethods = RconHttpServer.class.getMethods();
-        var handlerMethods = new HashMap<String, HashMap<RestMethods, Method>>();
+        var contextMapper = new ContextMapper();
 
         for (var method: allMethods) {
             logger.warning(method.getName());
             if (method.isAnnotationPresent(RequestHandler.class)) {
                 var annotation = method.getAnnotation(RequestHandler.class);
-                for (var parameter: method.getParameters()) {
-                    if (parameter.getType() == HttpExchange.class) {
-
-                        break;
-                    }
-                }
-
+                contextMapper.mapContext(annotation.path(), annotation.method(), method);
             }
         }
+
+        contextMapper.getContextMapping().forEach((context, mapping) -> {
+            httpServer.createContext(context, exchange -> {
+                exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+                try {
+                    switch (exchange.getRequestMethod()) {
+                        case "GET" -> {
+                            var getHandler = mapping.get(RestMethods.GET);
+                            if (getHandler != null) getHandler.invoke(this, exchange);
+                        }
+                        case "POST" -> {
+                            var postHandler = mapping.get(RestMethods.POST);
+                            if (postHandler != null) postHandler.invoke(this, exchange);
+                        }
+                        case "PUT" -> {
+                            var putHandler = mapping.get(RestMethods.PUT);
+                            if (putHandler != null) putHandler.invoke(this, exchange);
+                        }
+                        case "DELETE" -> {
+                            var deleteHandler = mapping.get(RestMethods.DELETE);
+                            if (deleteHandler != null) deleteHandler.invoke(this, exchange);
+                        }
+                    }
+                } catch (Throwable e) {
+                    logger.warning(e.getMessage());
+                }
+                exchange.close();
+            });
+        });
     }
 
     private void preHandle(HttpExchange exchange) throws IOException {
@@ -125,7 +148,7 @@ public class RconHttpServer {
         }
     }
 
-    @RequestHandler(method = "GET", path = "/rcon/lines")
+    @RequestHandler(method = RestMethods.GET, path = "/rcon/lines")
     public void handleLinesRequest(HttpExchange exchange) throws IOException {
         final var MAX_LINES_COUNT = plugin.getConsoleBuffer().getSize();
         Map<String, String> params;
@@ -185,7 +208,7 @@ public class RconHttpServer {
 
     }
 
-    @RequestHandler(method = "POST", path = "/rcon/command")
+    @RequestHandler(method = RestMethods.POST, path = "/rcon/command")
     public void handleCommandRequest(HttpExchange exchange) throws IOException {
         Map<String, String> params;
         ResponseBodyBuilder rb = new ResponseBodyBuilder();
