@@ -6,7 +6,7 @@
 
     <groupId>com.pixplaze</groupId>
     <artifactId>PixplazeRootsAPI</artifactId>
-    <version>0.1-indev</version>
+    <version>v0.0.2-indev</version>
     <packaging>jar</packaging>
 
     <name>PixplazeRootsAPI</name>
