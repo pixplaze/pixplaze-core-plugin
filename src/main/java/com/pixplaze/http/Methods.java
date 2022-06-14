@@ -1,6 +1,6 @@
 package com.pixplaze.http;
 
-public enum RestMethods {
+public enum Methods {
 	GET,
 	POST,
 	PUT,

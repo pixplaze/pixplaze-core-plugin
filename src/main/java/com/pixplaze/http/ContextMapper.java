@@ -5,13 +5,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ContextMapper {
-	private final Map<String, HashMap<RestMethods, Method>> pathMapping;
+	private final Map<String, HashMap<Methods, Method>> pathMapping;
 
 	public ContextMapper() {
 		pathMapping = new HashMap<>();
 	}
 
-	public void mapContext(String path, RestMethods method, Method handler) {
+	public void mapContext(String path, Methods method, Method handler) {
 		var map = pathMapping.get(path);
 		if (map == null) {
 			map = new HashMap<>();
@@ -22,7 +22,7 @@ public class ContextMapper {
 		}
 	}
 
-	public Map<String, HashMap<RestMethods, Method>> getContextMapping() {
+	public Map<String, HashMap<Methods, Method>> getContextMapping() {
 		return this.pathMapping;
 	}
 }

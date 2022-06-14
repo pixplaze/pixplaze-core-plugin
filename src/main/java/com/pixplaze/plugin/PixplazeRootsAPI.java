@@ -3,12 +3,11 @@ package com.pixplaze.plugin;
 import com.pixplaze.exceptions.HttpServerException;
 import com.pixplaze.exceptions.InvalidAddressException;
 import com.pixplaze.exceptions.CannotDefineAddressException;
+import com.pixplaze.http.RconHttpController;
 import com.pixplaze.http.RconHttpServer;
 import com.pixplaze.http.rcon.ConsoleBuffer;
 import com.pixplaze.util.Optional;
 import org.bukkit.plugin.java.JavaPlugin;
-
-import java.util.function.Supplier;
 
 public final class PixplazeRootsAPI extends JavaPlugin {
 
@@ -33,6 +32,7 @@ public final class PixplazeRootsAPI extends JavaPlugin {
         initConsoleBuffer();
         initRconHttpServer();
         saveDefaultConfig();
+        new RconHttpController(rconServer);
 
         var messages = getServer().getMessenger().getOutgoingChannels();
         for (var message: messages) {
