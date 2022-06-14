@@ -15,6 +15,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.checkerframework.checker.mustcall.qual.MustCallAlias;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -87,7 +88,6 @@ public class RconHttpServer {
         var contextMapper = new ContextMapper();
 
         for (var method: allMethods) {
-            logger.warning(method.getName());
             if (method.isAnnotationPresent(RequestHandler.class)) {
                 var annotation = method.getAnnotation(RequestHandler.class);
                 contextMapper.mapContext(annotation.path(), annotation.method(), method);
@@ -97,6 +97,12 @@ public class RconHttpServer {
         contextMapper.getContextMapping().forEach((context, mapping) -> {
             httpServer.createContext(context, exchange -> {
                 exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+                logger.warning("Path: " + exchange.getRequestURI().getPath());
+                logger.warning("Raw Path: " + exchange.getRequestURI().getRawPath());
+                logger.warning("Query: " + exchange.getRequestURI().getQuery());
+                logger.warning("Raw Query: " + exchange.getRequestURI().getRawQuery());
+                logger.warning("Scheme: " + exchange.getRequestURI().getScheme());
+
                 try {
                     switch (exchange.getRequestMethod()) {
                         case "GET" -> {
@@ -121,6 +127,18 @@ public class RconHttpServer {
                 }
                 exchange.close();
             });
+        });
+
+        var contexts = contextMapper.getContextMapping();
+        var contextsCount = contexts.size();
+        logger.warning("Count of contexts: %s".formatted(contextsCount));
+        contexts.forEach((path, mapping) -> {
+            logger.warning("Context path: %s".formatted(path));
+            mapping.forEach((restMethods, method) -> {
+                logger.warning("\tContext method: %s".formatted(restMethods));
+                logger.warning("\tContext handler: %s".formatted(method.getName()));
+            });
+            logger.warning("");
         });
     }
 

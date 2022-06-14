@@ -2,8 +2,6 @@ package com.pixplaze.http;
 
 import com.pixplaze.exceptions.QueryParseException;
 
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class QueryParams {
@@ -60,7 +58,6 @@ public class QueryParams {
 			while (stk.hasMoreTokens()) {
 				key = stk.nextToken();
 				val = stk.nextToken();
-				val = URLDecoder.decode(val, StandardCharsets.UTF_8);
 				map.put(key, val);
 			}
 		} catch (NoSuchElementException e) {
