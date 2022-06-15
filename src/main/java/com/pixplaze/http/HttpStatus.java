@@ -3,178 +3,48 @@ package com.pixplaze.http;
 import static java.net.HttpURLConnection.*;
 
 public enum HttpStatus {
+	/* 2XX: SUCCESS */
 	OK(HTTP_OK, "OK"),
 	CREATED(HTTP_CREATED, "Created"),
 	ACCEPTED(HTTP_ACCEPTED, "Accepted"),
 	NOT_AUTHORITATIVE(HTTP_NOT_AUTHORITATIVE, "Non-Authoritative Information"),
+	NO_CONTENT(HTTP_NO_CONTENT, "No Content"),
+	RESET(HTTP_RESET, "Reset Content"),
+	PARTIAL(HTTP_PARTIAL, "Partial Content"),
 
-	/**
-	 * HTTP Status-Code 204: No Content.
-	 */
-	HTTP_NO_CONTENT = 204;
+	/* 3XX: RELOCATION / REDIRECT */
+	MULT_CHOICE(HTTP_MULT_CHOICE, "Multiple Choices"),
+	MOVED_PERM(HTTP_MOVED_PERM, "Moved Permanently"),
+	MOVED_TEMP(HTTP_MOVED_TEMP, "Temporary Redirect"),
+	SEE_OTHER(HTTP_SEE_OTHER, "See Other"),
+	NOT_MODIFIED(HTTP_NOT_MODIFIED, "Not Modified"),
+	USE_PROXY(HTTP_USE_PROXY, "Use Proxy"),
 
-	/**
-	 * HTTP Status-Code 205: Reset Content.
-	 */
-	HTTP_RESET = 205;
+	/* 4XX: CLIENT ERROR */
+	BAD_REQUEST(HTTP_BAD_REQUEST, "Bad Request"),
+	UNAUTHORIZED(HTTP_UNAUTHORIZED, "Unauthorized"),
+	PAYMENT_REQUIRED(HTTP_PAYMENT_REQUIRED, "Payment Required"),
+	FORBIDDEN(HTTP_FORBIDDEN, "Forbidden"),
+	NOT_FOUND(HTTP_NOT_FOUND, "Not Found"),
+	BAD_METHOD(HTTP_BAD_METHOD, "Method Not Allowed"),
+	NOT_ACCEPTABLE(HTTP_NOT_ACCEPTABLE, "Not Acceptable"),
+	PROXY_AUTH(HTTP_PROXY_AUTH, "Proxy Authentication Required"),
+	CLIENT_TIMEOUT(HTTP_CLIENT_TIMEOUT, "Request Time-Out"),
+	CONFLICT(HTTP_CONFLICT, "Conflict"),
+	GONE(HTTP_GONE, "Gone"),
+	LENGTH_REQUIRED(HTTP_LENGTH_REQUIRED, "Length Required"),
+	PRECON_FAILED(HTTP_PRECON_FAILED, "Precondition Failed"),
+	ENTITY_TOO_LARGE(HTTP_ENTITY_TOO_LARGE, "Request Entity Too Large"),
+	REQ_TOO_LONG(HTTP_REQ_TOO_LONG, "Request-URI Too Large"),
+	UNSUPPORTED_TYPE(HTTP_UNSUPPORTED_TYPE, "Unsupported Media Type"),
 
-	/**
-	 * HTTP Status-Code 206: Partial Content.
-	 */
-	HTTP_PARTIAL = 206;
-
-	/* 3XX: relocation/redirect */
-
-	/**
-	 * HTTP Status-Code 300: Multiple Choices.
-	 */
-	HTTP_MULT_CHOICE = 300;
-
-	/**
-	 * HTTP Status-Code 301: Moved Permanently.
-	 */
-	HTTP_MOVED_PERM = 301;
-
-	/**
-	 * HTTP Status-Code 302: Temporary Redirect.
-	 */
-	HTTP_MOVED_TEMP = 302;
-
-	/**
-	 * HTTP Status-Code 303: See Other.
-	 */
-	HTTP_SEE_OTHER = 303;
-
-	/**
-	 * HTTP Status-Code 304: Not Modified.
-	 */
-	HTTP_NOT_MODIFIED = 304;
-
-	/**
-	 * HTTP Status-Code 305: Use Proxy.
-	 */
-	HTTP_USE_PROXY = 305;
-
-	/* 4XX: client error */
-
-	/**
-	 * HTTP Status-Code 400: Bad Request.
-	 */
-	HTTP_BAD_REQUEST = 400;
-
-	/**
-	 * HTTP Status-Code 401: Unauthorized.
-	 */
-	HTTP_UNAUTHORIZED = 401;
-
-	/**
-	 * HTTP Status-Code 402: Payment Required.
-	 */
-	HTTP_PAYMENT_REQUIRED = 402;
-
-	/**
-	 * HTTP Status-Code 403: Forbidden.
-	 */
-	HTTP_FORBIDDEN = 403;
-
-	/**
-	 * HTTP Status-Code 404: Not Found.
-	 */
-	HTTP_NOT_FOUND = 404;
-
-	/**
-	 * HTTP Status-Code 405: Method Not Allowed.
-	 */
-	HTTP_BAD_METHOD = 405;
-
-	/**
-	 * HTTP Status-Code 406: Not Acceptable.
-	 */
-	HTTP_NOT_ACCEPTABLE = 406;
-
-	/**
-	 * HTTP Status-Code 407: Proxy Authentication Required.
-	 */
-	HTTP_PROXY_AUTH = 407;
-
-	/**
-	 * HTTP Status-Code 408: Request Time-Out.
-	 */
-	HTTP_CLIENT_TIMEOUT = 408;
-
-	/**
-	 * HTTP Status-Code 409: Conflict.
-	 */
-	HTTP_CONFLICT = 409;
-
-	/**
-	 * HTTP Status-Code 410: Gone.
-	 */
-	HTTP_GONE = 410;
-
-	/**
-	 * HTTP Status-Code 411: Length Required.
-	 */
-	HTTP_LENGTH_REQUIRED = 411;
-
-	/**
-	 * HTTP Status-Code 412: Precondition Failed.
-	 */
-	HTTP_PRECON_FAILED = 412;
-
-	/**
-	 * HTTP Status-Code 413: Request Entity Too Large.
-	 */
-	HTTP_ENTITY_TOO_LARGE = 413;
-
-	/**
-	 * HTTP Status-Code 414: Request-URI Too Large.
-	 */
-	HTTP_REQ_TOO_LONG = 414;
-
-	/**
-	 * HTTP Status-Code 415: Unsupported Media Type.
-	 */
-	HTTP_UNSUPPORTED_TYPE = 415;
-
-	/* 5XX: server error */
-
-	/**
-	 * HTTP Status-Code 500: Internal Server Error.
-	 * @deprecated   it is misplaced and shouldn't have existed.
-	 */
-	@Deprecated
-	HTTP_SERVER_ERROR = 500;
-
-	/**
-	 * HTTP Status-Code 500: Internal Server Error.
-	 */
-	HTTP_INTERNAL_ERROR = 500;
-
-	/**
-	 * HTTP Status-Code 501: Not Implemented.
-	 */
-	HTTP_NOT_IMPLEMENTED = 501;
-
-	/**
-	 * HTTP Status-Code 502: Bad Gateway.
-	 */
-	HTTP_BAD_GATEWAY = 502;
-
-	/**
-	 * HTTP Status-Code 503: Service Unavailable.
-	 */
-	HTTP_UNAVAILABLE = 503;
-
-	/**
-	 * HTTP Status-Code 504: Gateway Timeout.
-	 */
-	HTTP_GATEWAY_TIMEOUT = 504;
-
-	/**
-	 * HTTP Status-Code 505: HTTP Version Not Supported.
-	 */
-	HTTP_VERSION = 505;
+	/* 5XX: SERVER ERROR */
+	INTERNAL_ERROR(HTTP_INTERNAL_ERROR, "Internal Server Error"),
+	NOT_IMPLEMENTED(HTTP_NOT_IMPLEMENTED, "Not Implemented"),
+	BAD_GATEWAY(HTTP_BAD_GATEWAY, "Bad Gateway"),
+	UNAVAILABLE(HTTP_UNAVAILABLE, "Service Unavailable"),
+	GATEWAY_TIMEOUT(HTTP_GATEWAY_TIMEOUT, "Gateway Timeout"),
+	VERSION(HTTP_VERSION, "HTTP Version Not Supported");
 
 	private final int code;
 	private final String message;
