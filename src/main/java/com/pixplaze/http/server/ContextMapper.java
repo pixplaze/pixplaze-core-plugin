@@ -1,4 +1,6 @@
-package com.pixplaze.http;
+package com.pixplaze.http.server;
+
+import com.pixplaze.http.Methods;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -7,7 +9,7 @@ import java.util.Map;
 public class ContextMapper {
 	private final Map<String, HashMap<Methods, Method>> pathMapping;
 
-	public ContextMapper() {
+	protected ContextMapper() {
 		pathMapping = new HashMap<>();
 	}
 

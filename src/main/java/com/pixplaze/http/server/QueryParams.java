@@ -1,4 +1,4 @@
-package com.pixplaze.http;
+package com.pixplaze.http.server;
 
 import com.pixplaze.exceptions.QueryParseException;
 
@@ -8,7 +8,7 @@ public class QueryParams {
 
 	private final Map<String, String> variables;
 
-	public QueryParams(String query) {
+	protected QueryParams(String query) {
 		this.variables = parse(query);
 	}
 

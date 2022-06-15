@@ -3,10 +3,13 @@ package com.pixplaze.http;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+
 import com.pixplaze.annotations.RequestHandler;
 import com.pixplaze.plugin.PixplazeRootsAPI;
 import com.pixplaze.util.Utils;
+
 import com.sun.net.httpserver.HttpExchange;
+
 import org.bukkit.command.CommandSender;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -16,16 +19,20 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
-public class RconHttpController extends HttpController {
+public class RconHttpController implements HttpController {
 
-	public RconHttpController(RconHttpServer httpServer) {
-		super(httpServer);
-		super.init(this);
+	private final PixplazeRootsAPI plugin;
+	private final Logger logger;
+
+	public RconHttpController(PixplazeRootsAPI plugin, Logger logger) {
+		this.plugin = plugin;
+		this.logger = logger;
 	}
 
 	@Override
-	protected void beforeEach(HttpExchange exchange) {
+	public void beforeEach(HttpExchange exchange) {
 		exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
 	}
 
@@ -39,7 +46,6 @@ public class RconHttpController extends HttpController {
 			params = parseParams(exchange.getRequestURI().getQuery());
 		} catch (Exception e) {
 			sendResponse(exchange, 400, rb.setError("ParamsParseError").setMessage("Error occurred while parsing params").getFinal());
-
 			return;
 		}
 
@@ -49,7 +55,6 @@ public class RconHttpController extends HttpController {
 			return;
 		} else if (!Utils.checkToken(params.get("access-token"))) {
 			sendResponse(exchange, 401, rb.setError("InvalidTokenError").setMessage("Access token is invalid").getFinal());
-
 			return;
 		}
 

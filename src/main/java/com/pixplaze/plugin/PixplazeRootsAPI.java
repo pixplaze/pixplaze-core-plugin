@@ -4,7 +4,7 @@ import com.pixplaze.exceptions.HttpServerException;
 import com.pixplaze.exceptions.InvalidAddressException;
 import com.pixplaze.exceptions.CannotDefineAddressException;
 import com.pixplaze.http.RconHttpController;
-import com.pixplaze.http.RconHttpServer;
+import com.pixplaze.http.server.PixplazeHttpServer;
 import com.pixplaze.http.rcon.ConsoleBuffer;
 import com.pixplaze.util.Optional;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -13,9 +13,8 @@ public final class PixplazeRootsAPI extends JavaPlugin {
 
     private static PixplazeRootsAPI instance;
 
-    private RconHttpServer rconServer;
-
     private ConsoleBuffer consoleBuffer;
+    private PixplazeHttpServer rconServer;
 
     public PixplazeRootsAPI() {
         if (instance == null) {
@@ -32,7 +31,7 @@ public final class PixplazeRootsAPI extends JavaPlugin {
         initConsoleBuffer();
         initRconHttpServer();
         saveDefaultConfig();
-        new RconHttpController(rconServer);
+        rconServer.mount(new RconHttpController(this, getLogger()));
 
         var messages = getServer().getMessenger().getOutgoingChannels();
         for (var message: messages) {
@@ -42,7 +41,7 @@ public final class PixplazeRootsAPI extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        Optional.runNotNull(getRconHttpServer(), RconHttpServer::stop);
+        Optional.runNotNull(getRconHttpServer(), PixplazeHttpServer::stop);
     }
 
     public ConsoleBuffer getConsoleBuffer() {
@@ -72,7 +71,7 @@ public final class PixplazeRootsAPI extends JavaPlugin {
         var tryAgain = true;
         while (tryAgain) {
             try {
-                rconServer = new RconHttpServer(address, port);
+                rconServer = new PixplazeHttpServer(address, port);
                 tryAgain = false;
             } catch (InvalidAddressException e) {
                 address = "auto";
@@ -91,7 +90,7 @@ public final class PixplazeRootsAPI extends JavaPlugin {
         });
     }
 
-    public RconHttpServer getRconHttpServer() {
+    public PixplazeHttpServer getRconHttpServer() {
         return this.rconServer;
     }
 }
