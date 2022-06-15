@@ -1,19 +1,17 @@
 package com.pixplaze.http.server;
 
-import com.pixplaze.http.Methods;
-
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
 public class ContextMapper {
-	private final Map<String, HashMap<Methods, Method>> pathMapping;
+	private final Map<String, HashMap<String, Method>> pathMapping;
 
 	protected ContextMapper() {
 		pathMapping = new HashMap<>();
 	}
 
-	public void mapContext(String path, Methods method, Method handler) {
+	protected void mapContext(String path, String method, Method handler) {
 		var map = pathMapping.get(path);
 		if (map == null) {
 			map = new HashMap<>();
@@ -24,7 +22,7 @@ public class ContextMapper {
 		}
 	}
 
-	public Map<String, HashMap<Methods, Method>> getContextMapping() {
+	protected Map<String, HashMap<String, Method>> getContextMapping() {
 		return this.pathMapping;
 	}
 }

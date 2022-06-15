@@ -1,5 +1,5 @@
 package com.pixplaze.http;
-;
+
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.pixplaze.http.annotations.RequestHandler;
@@ -24,11 +24,13 @@ import com.pixplaze.http.server.QueryParams;
  * <pre> {@code
  * @RequestHandler(method = "POST", path = "/index")
  * public void handleIndex(HttpExchange exchange, QueryParams params) {...}
- * }
- * </pre>
+ * } </pre>
+ *
  * @see HttpHandler
  * @see RequestHandler
  * @see QueryParams
+ *
+ * @since v0.1.0-indev
  */
 public interface HttpController {
 	/**

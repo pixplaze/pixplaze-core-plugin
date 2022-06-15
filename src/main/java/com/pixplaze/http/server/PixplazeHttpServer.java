@@ -5,16 +5,32 @@ import com.pixplaze.exceptions.HttpServerException;
 import com.pixplaze.exceptions.InvalidAddressException;
 import com.pixplaze.exceptions.CannotDefineAddressException;
 import com.pixplaze.http.HttpController;
-import com.pixplaze.http.Methods;
 import com.pixplaze.plugin.PixplazeRootsAPI;
 import com.pixplaze.util.Inet;
+
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
 import java.net.*;
+import java.net.http.HttpResponse;
 import java.util.logging.Logger;
 
+/**
+ * Простой HTTP-сервер, позволяющий обрабатывать запросы посредством контроллера.
+ * В отличие от {@link HttpServer}, PixplazeHttpServer имеет возможность
+ * делигировать обработку запросов контроллерам, - наследникам {@link HttpController}.
+ *
+ * Контроллеры имеют возможность обрабатывать запросы раздельно по методам.
+ * Некоторые операции, вроде обработки исключений, закрытии потоков ввода-вывода,
+ * формирования статус-кода происходят автоматически.
+ *
+ * @see com.pixplaze.http.HttpController
+ * @see com.sun.net.httpserver.HttpServer
+ * @see com.sun.net.httpserver.HttpHandler
+ *
+ * @since v0.1.0-indev
+ */
 public final class PixplazeHttpServer {
 
     public Logger logger = PixplazeRootsAPI.getInstance().getLogger();
@@ -41,7 +57,7 @@ public final class PixplazeHttpServer {
 
         try {
             httpServer = HttpServer.create(new InetSocketAddress(this.address, this.port), 0);
-        } catch (IOException e) {;
+        } catch (IOException e) {
             throw new HttpServerException(
 					"Can not create pixplaze core api server on address: %s:%d"
 		            .formatted(address, port), e
@@ -49,6 +65,12 @@ public final class PixplazeHttpServer {
         }
     }
 
+    /**
+     * Метод, позволяющий привязать объект контроллера к HTTP-серверу.
+     * Иными словами, метод монтирует контроллер к HTTP-серверу.
+     *
+     * @param controller объект контроллера, который должен быть привязан к HTTP-серверу.
+     */
     public void mount(HttpController controller) {
         var allMethods = controller.getClass().getMethods();
         var contextMapper = new ContextMapper();
@@ -60,41 +82,42 @@ public final class PixplazeHttpServer {
             }
         }
 
-        contextMapper.getContextMapping().forEach((context, mapping) -> {
-            httpServer.createContext(context, exchange -> {
-                var params = new QueryParams(exchange.getRequestURI().getQuery());
-                controller.beforeEach(exchange);
-                try {
-                    switch (exchange.getRequestMethod()) {
-                        case "GET" -> {
-                            var getHandler = mapping.get(Methods.GET);
-                            if (getHandler != null) getHandler.invoke(controller, exchange, params);
-                        }
-                        case "POST" -> {
-                            var postHandler = mapping.get(Methods.POST);
-                            if (postHandler != null) postHandler.invoke(controller, exchange, params);
-                        }
-                        case "PUT" -> {
-                            var putHandler = mapping.get(Methods.PUT);
-                            if (putHandler != null) putHandler.invoke(controller, exchange, params);
-                        }
-                        case "DELETE" -> {
-                            var deleteHandler = mapping.get(Methods.DELETE);
-                            if (deleteHandler != null) deleteHandler.invoke(controller, exchange, params);
-                        }
+        contextMapper.getContextMapping().forEach((context, mapping) -> httpServer.createContext(context, exchange -> {
+            var params = new QueryParams(exchange.getRequestURI().getQuery());
+            controller.beforeEach(exchange);
+            try {
+                switch (exchange.getRequestMethod()) {
+                    case "GET" -> {
+                        var getHandler = mapping.get("GET");
+                        if (getHandler != null) getHandler.invoke(controller, exchange, params);
                     }
-                } catch (IllegalArgumentException e) {
-                    // TODO: Реализлвать исключение
-                    logger.warning(
-                            "Illegal handler arguments! Expected: %s, %s!"
-                            .formatted(HttpExchange.class.getSimpleName(), QueryParams.class.getSimpleName())
-                    );
-                } catch (Throwable e) {
-                    logger.warning("Error occurred: %s\tMessage: %s".formatted(e.getClass().getSimpleName(), e.getMessage()));
+                    case "POST" -> {
+                        var postHandler = mapping.get("POST");
+                        if (postHandler != null) postHandler.invoke(controller, exchange, params);
+                    }
+                    case "PUT" -> {
+                        var putHandler = mapping.get("PUT");
+                        if (putHandler != null) putHandler.invoke(controller, exchange, params);
+                    }
+                    case "DELETE" -> {
+                        var deleteHandler = mapping.get("DELETE");
+                        if (deleteHandler != null) deleteHandler.invoke(controller, exchange, params);
+                    }
+                    default -> {
+
+                    }
                 }
-                exchange.close();
-            });
-        });
+            } catch (IllegalArgumentException e) {
+                // TODO: Реализлвать исключение
+                logger.warning(
+                        "Illegal handler arguments! Expected: %s, %s!"
+                        .formatted(HttpExchange.class.getSimpleName(), QueryParams.class.getSimpleName())
+                );
+            } catch (Throwable e) {
+                logger.warning("Error occurred: %s\tMessage: %s".formatted(e.getClass().getSimpleName(), e.getMessage()));
+            }
+            exchange.close();
+        }));
 
         var contexts = contextMapper.getContextMapping();
         var contextsCount = contexts.size();
@@ -127,9 +150,5 @@ public final class PixplazeHttpServer {
 
     public int getPort() {
         return port;
-    }
-
-    public HttpServer getParent() {
-        return this.httpServer;
     }
 }
