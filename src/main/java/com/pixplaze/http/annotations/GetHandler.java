@@ -1,4 +1,4 @@
-package com.pixplaze.annotations;
+package com.pixplaze.http.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -7,7 +7,7 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface PutHandler {
-	String method() default "PUT";
+public @interface GetHandler {
+	String method() default "GET";
 	String value();
 }

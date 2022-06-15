@@ -1,4 +1,4 @@
-package com.pixplaze.annotations;
+package com.pixplaze.http.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -7,7 +7,7 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface PostHandler {
-	String method() default "POST";
+public @interface DeleteHandler {
+	String method() default "DELETE";
 	String value();
 }

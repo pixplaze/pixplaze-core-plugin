@@ -1,6 +1,6 @@
 package com.pixplaze.http.server;
 
-import com.pixplaze.annotations.RequestHandler;
+import com.pixplaze.http.annotations.RequestHandler;
 import com.pixplaze.exceptions.HttpServerException;
 import com.pixplaze.exceptions.InvalidAddressException;
 import com.pixplaze.exceptions.CannotDefineAddressException;
@@ -84,6 +84,7 @@ public final class PixplazeHttpServer {
                         }
                     }
                 } catch (IllegalArgumentException e) {
+                    // TODO: Реализлвать исключение
                     logger.warning(
                             "Illegal handler arguments! Expected: %s, %s!"
                             .formatted(HttpExchange.class.getSimpleName(), QueryParams.class.getSimpleName())

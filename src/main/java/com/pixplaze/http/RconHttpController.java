@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
-import com.pixplaze.annotations.RequestHandler;
+import com.pixplaze.http.annotations.RequestHandler;
 import com.pixplaze.http.server.QueryParams;
 import com.pixplaze.plugin.PixplazeRootsAPI;
 import com.pixplaze.util.Utils;
@@ -17,9 +17,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 
 public class RconHttpController implements HttpController {
