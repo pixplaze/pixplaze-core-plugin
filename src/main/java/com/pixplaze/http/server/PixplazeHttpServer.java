@@ -6,7 +6,6 @@ import com.pixplaze.exceptions.InvalidAddressException;
 import com.pixplaze.exceptions.CannotDefineAddressException;
 import com.pixplaze.http.HttpController;
 import com.pixplaze.http.Methods;
-import com.pixplaze.http.server.ContextMapper;
 import com.pixplaze.plugin.PixplazeRootsAPI;
 import com.pixplaze.util.Inet;
 import com.sun.net.httpserver.HttpServer;
@@ -49,12 +48,7 @@ public final class PixplazeHttpServer {
         }
     }
 
-
-    public final void mount(HttpController controller) {
-        mapHandlers(controller);
-    }
-
-    private void mapHandlers(HttpController controller) {
+    public void mount(HttpController controller) {
         var allMethods = controller.getClass().getMethods();
         var contextMapper = new ContextMapper();
 
@@ -67,28 +61,29 @@ public final class PixplazeHttpServer {
 
         contextMapper.getContextMapping().forEach((context, mapping) -> {
             httpServer.createContext(context, exchange -> {
+                var params = new QueryParams(exchange.getRequestURI().getQuery());
                 controller.beforeEach(exchange);
                 try {
                     switch (exchange.getRequestMethod()) {
                         case "GET" -> {
                             var getHandler = mapping.get(Methods.GET);
-                            if (getHandler != null) getHandler.invoke(controller, exchange);
+                            if (getHandler != null) getHandler.invoke(controller, exchange, params);
                         }
                         case "POST" -> {
                             var postHandler = mapping.get(Methods.POST);
-                            if (postHandler != null) postHandler.invoke(controller, exchange);
+                            if (postHandler != null) postHandler.invoke(controller, exchange, params);
                         }
                         case "PUT" -> {
                             var putHandler = mapping.get(Methods.PUT);
-                            if (putHandler != null) putHandler.invoke(controller, exchange);
+                            if (putHandler != null) putHandler.invoke(controller, exchange, params);
                         }
                         case "DELETE" -> {
                             var deleteHandler = mapping.get(Methods.DELETE);
-                            if (deleteHandler != null) deleteHandler.invoke(controller, exchange);
+                            if (deleteHandler != null) deleteHandler.invoke(controller, exchange, params);
                         }
                     }
                 } catch (Throwable e) {
-                    logger.warning(e.getMessage());
+                    logger.warning("Error occurred: %s\tMessage: %s".formatted(e.getClass().getSimpleName(), e.getMessage()));
                 }
                 exchange.close();
             });

@@ -24,6 +24,10 @@ public class QueryParams {
 		return !isEmpty();
 	}
 
+	public boolean has(String name) {
+		return variables.containsKey(name);
+	}
+
 	public int getAsInt(String key) {
 		return Integer.parseInt(variables.get(key));
 	}

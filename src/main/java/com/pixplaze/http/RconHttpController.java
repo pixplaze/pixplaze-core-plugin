@@ -5,6 +5,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 import com.pixplaze.annotations.RequestHandler;
+import com.pixplaze.http.server.QueryParams;
 import com.pixplaze.plugin.PixplazeRootsAPI;
 import com.pixplaze.util.Utils;
 
@@ -37,32 +38,24 @@ public class RconHttpController implements HttpController {
 	}
 
 	@RequestHandler(method = Methods.GET, path = "/rcon/lines")
-	public void handleLinesRequest(HttpExchange exchange) throws IOException {
+	public void handleLinesRequest(HttpExchange exchange, QueryParams params) throws IOException {
 		final var MAX_LINES_COUNT = plugin.getConsoleBuffer().getSize();
-		Map<String, String> params;
 		ResponseBodyBuilder rb = new ResponseBodyBuilder();
 
-		try {
-			params = parseParams(exchange.getRequestURI().getQuery());
-		} catch (Exception e) {
-			sendResponse(exchange, 400, rb.setError("ParamsParseError").setMessage("Error occurred while parsing params").getFinal());
-			return;
-		}
-
-		if (!params.containsKey("access-token")) {
+		if (!params.has("access-token")) {
 			sendResponse(exchange, 401, rb.setError("InvalidTokenError").setMessage("No token!").getFinal());
 
 			return;
-		} else if (!Utils.checkToken(params.get("access-token"))) {
+		} else if (!Utils.checkToken(params.getAsString("access-token"))) {
 			sendResponse(exchange, 401, rb.setError("InvalidTokenError").setMessage("Access token is invalid").getFinal());
 			return;
 		}
 
 		int count = 0;
-		if (!params.containsKey("count")) {
+		if (!params.has("count")) {
 			count = MAX_LINES_COUNT;
 		} else {
-			count = Integer.parseInt(params.get("count"));
+			count = params.getAsInt("count");
 		}
 
 		if (count == 0) {
@@ -95,31 +88,23 @@ public class RconHttpController implements HttpController {
 	}
 
 	@RequestHandler(method = Methods.POST, path = "/rcon/command")
-	public void handleCommandRequest(HttpExchange exchange) throws IOException {
-		Map<String, String> params;
+	public void handleCommandRequest(HttpExchange exchange, QueryParams params) throws IOException {
 		ResponseBodyBuilder rb = new ResponseBodyBuilder();
 
-		try {
-			params = parseParams(exchange.getRequestURI().getQuery());
-		} catch (Exception e) {
-			sendResponse(exchange, 400, rb.setError("ParamsParseError").setMessage("Error occurred while parsing params").getFinal());
-			return;
-		}
-
-		if (!params.containsKey("access-token")) {
+		if (!params.has("access-token")) {
 			sendResponse(exchange, 401, rb.setError("InvalidTokenError").setMessage("No token!").getFinal());
 			return;
-		} else if (!Utils.checkToken(params.get("access-token"))) {
+		} else if (!Utils.checkToken(params.getAsString("access-token"))) {
 			sendResponse(exchange, 401, rb.setError("InvalidTokenError").setMessage("Access token is invalid").getFinal());
 			return;
 		}
 
 		String line = "";
-		if (!params.containsKey("line")) {
+		if (!params.has("line")) {
 			sendResponse(exchange, 401, rb.setError("InvalidParamError").setMessage("No param line").getFinal());
 			return;
 		} else {
-			line = params.get("line").replace("%20"," ");
+			line = params.getAsString("line");
 		}
 
 		if ("".equals(line)) {
@@ -149,22 +134,6 @@ public class RconHttpController implements HttpController {
 		outputStream.flush();
 		outputStream.close();
 		exchange.close();
-	}
-
-	private Map<String, String> parseParams(String query) {
-		if (query == null) {
-			return null;
-		}
-		Map<String, String> result = new HashMap<>();
-		for (String param : query.split("&")) {
-			String[] entry = param.split("=");
-			if (entry.length > 1) {
-				result.put(entry[0], entry[1]);
-			} else{
-				result.put(entry[0], "");
-			}
-		}
-		return result;
 	}
 
 	private void dispatchCommand(CommandSender sender, String command) {
