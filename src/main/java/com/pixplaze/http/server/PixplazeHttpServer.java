@@ -8,6 +8,7 @@ import com.pixplaze.http.HttpController;
 import com.pixplaze.http.Methods;
 import com.pixplaze.plugin.PixplazeRootsAPI;
 import com.pixplaze.util.Inet;
+import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
@@ -82,6 +83,11 @@ public final class PixplazeHttpServer {
                             if (deleteHandler != null) deleteHandler.invoke(controller, exchange, params);
                         }
                     }
+                } catch (IllegalArgumentException e) {
+                    logger.warning(
+                            "Illegal handler arguments! Expected: %s, %s!"
+                            .formatted(HttpExchange.class.getSimpleName(), QueryParams.class.getSimpleName())
+                    );
                 } catch (Throwable e) {
                     logger.warning("Error occurred: %s\tMessage: %s".formatted(e.getClass().getSimpleName(), e.getMessage()));
                 }
