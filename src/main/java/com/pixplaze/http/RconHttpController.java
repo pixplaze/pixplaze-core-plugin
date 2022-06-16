@@ -43,7 +43,6 @@ public class RconHttpController implements HttpController {
 
 		if (!params.has("access-token")) {
 			sendResponse(exchange, 401, rb.setError("InvalidTokenError").setMessage("No token!").getFinal());
-
 			return;
 		} else if (!Utils.checkToken(params.getAsString("access-token"))) {
 			sendResponse(exchange, 401, rb.setError("InvalidTokenError").setMessage("Access token is invalid").getFinal());
