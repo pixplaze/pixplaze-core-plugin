@@ -4,6 +4,7 @@ import com.pixplaze.exceptions.HttpServerException;
 import com.pixplaze.exceptions.InvalidAddressException;
 import com.pixplaze.exceptions.CannotDefineAddressException;
 import com.pixplaze.http.HttpController;
+import com.pixplaze.http.exceptions.BadMethodException;
 import com.pixplaze.plugin.PixplazeRootsAPI;
 import com.pixplaze.util.Inet;
 
@@ -80,39 +81,23 @@ public final class PixplazeHttpServer {
         var contextMapper = ContextMapper.scanHandlers(allMethods);
 
         contextMapper.getContextMapping().forEach((context, mapping) -> httpServer.createContext(context, exchange -> {
+            var method = exchange.getRequestMethod();
             var params = new QueryParams(exchange.getRequestURI().getQuery());
             controller.beforeEach(exchange);
             logger.warning("METHOD: " + exchange.getRequestMethod());
             try {
-                switch (exchange.getRequestMethod()) {
-                    case "GET" -> {
-                        var getHandler = mapping.get("GET");
-                        if (getHandler != null) getHandler.invoke(controller, exchange, params);
-                    }
-                    case "POST" -> {
-                        var postHandler = mapping.get("POST");
-                        if (postHandler != null) postHandler.invoke(controller, exchange, params);
-                    }
-                    case "PUT" -> {
-                        var putHandler = mapping.get("PUT");
-                        if (putHandler != null) putHandler.invoke(controller, exchange, params);
-                    }
-                    case "DELETE" -> {
-                        var deleteHandler = mapping.get("DELETE");
-                        if (deleteHandler != null) deleteHandler.invoke(controller, exchange, params);
-                    }
-                    default -> {
-                        var response = BAD_METHOD.getMessage().getBytes(StandardCharsets.UTF_8);
-                        exchange.getResponseBody().write(response);
-                        exchange.sendResponseHeaders(BAD_METHOD.getCode(), response.length);
-                    }
-                }
+                this.observe(controller, context, method, mapping, exchange, params);
             } catch (IllegalArgumentException e) {
                 // TODO: Реализлвать исключение
                 logger.warning(
                         "Illegal handler arguments! Expected: %s, %s!"
                         .formatted(HttpExchange.class.getSimpleName(), QueryParams.class.getSimpleName())
                 );
+            } catch (BadMethodException e) {
+                var message = e.getMessage().getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(BAD_METHOD.getCode(), message.length);
+                exchange.getResponseBody().write(message);
+                exchange.getResponseBody().flush();
             } catch (Throwable e) {
                 logger.warning("Error occurred: %s\tMessage: %s".formatted(e.getClass().getSimpleName(), e.getMessage()));
             }
@@ -132,14 +117,22 @@ public final class PixplazeHttpServer {
         });
     }
 
-    @Deprecated
+    // TODO: Упростить код, уменьшить количество параметров
     private void observe(HttpController controller,
                          String context,
+                         String method,
                          Map<String, Method> mapping,
                          HttpExchange exchange,
-                         QueryParams params) throws InvocationTargetException, IllegalAccessException {
-        var getHandler = mapping.get("GET");
-        if (getHandler != null) getHandler.invoke(controller, exchange, params);
+                         QueryParams params) throws InvocationTargetException,
+                                                    IllegalAccessException,
+                                                    BadMethodException {
+        var handler = mapping.get(method);
+        if (handler != null) {
+            handler.invoke(controller, exchange, params);
+        } else {
+            throw new BadMethodException(method, context);
+        }
+
     }
 
     public void start() {
