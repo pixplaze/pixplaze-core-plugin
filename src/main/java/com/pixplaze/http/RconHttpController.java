@@ -6,7 +6,6 @@ import com.google.gson.JsonObject;
 
 import com.pixplaze.http.annotations.GetHandler;
 import com.pixplaze.http.annotations.PostHandler;
-import com.pixplaze.http.annotations.RequestHandler;
 import com.pixplaze.http.server.QueryParams;
 import com.pixplaze.plugin.PixplazeRootsAPI;
 import com.pixplaze.util.Utils;
@@ -76,11 +75,8 @@ public class RconHttpController implements HttpController {
 			//fixme
 
 			rb.setResponse(jsonResponse).setMessage("Command request success");
-
-			//            logger.warning("NOT pidoor");
 			sendResponse(exchange, 200, rb.getFinal());
 		} catch (Exception e) {
-			//            logger.warning("pidoor");
 			logger.warning(e.getMessage());
 			sendResponse(exchange, 500, rb.setError(e.getClass().getTypeName()).setMessage(e.getMessage()).getFinal());
 		}
@@ -137,7 +133,7 @@ public class RconHttpController implements HttpController {
 	}
 
 	private void dispatchCommand(CommandSender sender, String command) {
-		logger.warning("requested server command");
+		logger.warning("Requested server command");
 		new BukkitRunnable() {
 			@Override
 			public void run() {
@@ -146,7 +142,7 @@ public class RconHttpController implements HttpController {
 				} catch (Exception e) {
 					logger.warning(e.getMessage());
 				}
-				logger.warning("Command sended");
+				logger.warning("Command sent");
 			}
 		}.runTask(plugin);
 	}

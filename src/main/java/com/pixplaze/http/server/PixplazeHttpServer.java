@@ -84,7 +84,6 @@ public final class PixplazeHttpServer {
             var method = exchange.getRequestMethod();
             var params = new QueryParams(exchange.getRequestURI().getQuery());
             controller.beforeEach(exchange);
-            logger.warning("METHOD: " + exchange.getRequestMethod());
             try {
                 this.observe(controller, context, method, mapping, exchange, params);
             } catch (IllegalArgumentException e) {
