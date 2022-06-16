@@ -4,6 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
+import com.pixplaze.http.annotations.GetHandler;
+import com.pixplaze.http.annotations.PostHandler;
 import com.pixplaze.http.annotations.RequestHandler;
 import com.pixplaze.http.server.QueryParams;
 import com.pixplaze.plugin.PixplazeRootsAPI;
@@ -35,7 +37,7 @@ public class RconHttpController implements HttpController {
 		exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
 	}
 
-	@RequestHandler(method = "GET", path = "/rcon/lines")
+	@GetHandler("/rcon/lines")
 	public void handleLinesRequest(HttpExchange exchange, QueryParams params) throws IOException {
 		final var MAX_LINES_COUNT = plugin.getConsoleBuffer().getSize();
 		ResponseBodyBuilder rb = new ResponseBodyBuilder();
@@ -85,7 +87,7 @@ public class RconHttpController implements HttpController {
 
 	}
 
-	@RequestHandler(method = "POST", path = "/rcon/command")
+	@PostHandler("/rcon/command")
 	public void handleCommandRequest(HttpExchange exchange, QueryParams params) throws IOException {
 		ResponseBodyBuilder rb = new ResponseBodyBuilder();
 

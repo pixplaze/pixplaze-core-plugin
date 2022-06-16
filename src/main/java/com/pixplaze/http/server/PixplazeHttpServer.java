@@ -1,6 +1,5 @@
 package com.pixplaze.http.server;
 
-import com.pixplaze.http.annotations.RequestHandler;
 import com.pixplaze.exceptions.HttpServerException;
 import com.pixplaze.exceptions.InvalidAddressException;
 import com.pixplaze.exceptions.CannotDefineAddressException;
@@ -12,9 +11,14 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.*;
-import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.logging.Logger;
+
+import static com.pixplaze.http.HttpStatus.BAD_METHOD;
 
 /**
  * Простой HTTP-сервер, позволяющий обрабатывать запросы посредством контроллера.
@@ -73,18 +77,12 @@ public final class PixplazeHttpServer {
      */
     public void mount(HttpController controller) {
         var allMethods = controller.getClass().getMethods();
-        var contextMapper = new ContextMapper();
-
-        for (var method: allMethods) {
-            if (method.isAnnotationPresent(RequestHandler.class)) {
-                var annotation = method.getAnnotation(RequestHandler.class);
-                contextMapper.mapContext(annotation.path(), annotation.method(), method);
-            }
-        }
+        var contextMapper = ContextMapper.scanHandlers(allMethods);
 
         contextMapper.getContextMapping().forEach((context, mapping) -> httpServer.createContext(context, exchange -> {
             var params = new QueryParams(exchange.getRequestURI().getQuery());
             controller.beforeEach(exchange);
+            logger.warning("METHOD: " + exchange.getRequestMethod());
             try {
                 switch (exchange.getRequestMethod()) {
                     case "GET" -> {
@@ -104,7 +102,9 @@ public final class PixplazeHttpServer {
                         if (deleteHandler != null) deleteHandler.invoke(controller, exchange, params);
                     }
                     default -> {
-
+                        var response = BAD_METHOD.getMessage().getBytes(StandardCharsets.UTF_8);
+                        exchange.getResponseBody().write(response);
+                        exchange.sendResponseHeaders(BAD_METHOD.getCode(), response.length);
                     }
                 }
             } catch (IllegalArgumentException e) {
@@ -130,6 +130,16 @@ public final class PixplazeHttpServer {
             });
             logger.warning("");
         });
+    }
+
+    @Deprecated
+    private void observe(HttpController controller,
+                         String context,
+                         Map<String, Method> mapping,
+                         HttpExchange exchange,
+                         QueryParams params) throws InvocationTargetException, IllegalAccessException {
+        var getHandler = mapping.get("GET");
+        if (getHandler != null) getHandler.invoke(controller, exchange, params);
     }
 
     public void start() {
