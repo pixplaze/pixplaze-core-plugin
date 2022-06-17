@@ -5,6 +5,7 @@ import com.pixplaze.exceptions.InvalidAddressException;
 import com.pixplaze.exceptions.CannotDefineAddressException;
 import com.pixplaze.http.HttpController;
 import com.pixplaze.http.exceptions.BadMethodException;
+import com.pixplaze.http.exceptions.InvalidRequestHandler;
 import com.pixplaze.plugin.PixplazeRootsAPI;
 import com.pixplaze.util.Inet;
 
@@ -88,10 +89,10 @@ public final class PixplazeHttpServer {
                 this.observe(controller, context, method, mapping, exchange, params);
             } catch (IllegalArgumentException e) {
                 // TODO: Реализлвать исключение
-                logger.warning(
-                        "Illegal handler arguments! Expected: %s, %s!"
-                        .formatted(HttpExchange.class.getSimpleName(), QueryParams.class.getSimpleName())
-                );
+//                logger.warning(
+//                        "Illegal handler arguments! Expected: %s, %s!"
+//                        .formatted(HttpExchange.class.getSimpleName(), QueryParams.class.getSimpleName())
+//                );
             } catch (BadMethodException e) {
                 var message = e.getMessage().getBytes(StandardCharsets.UTF_8);
                 exchange.sendResponseHeaders(BAD_METHOD.getCode(), message.length);
