@@ -41,18 +41,10 @@ public class RconHttpController implements HttpController {
 	@GetHandler("/rcon/lines")
 	public void handleGetRconLines(HttpExchange exchange, QueryParams params) throws IOException {
 		final var MAX_LINES_COUNT = plugin.getConsoleBuffer().getSize();
-		ResponseBodyBuilder rb = new ResponseBodyBuilder();
 
-		// Проверка отправленного токена
-		if (!params.has("access-token")) {
-			rb.setError("InvalidTokenError").setMessage("Token is required");
-			sendResponse(exchange, HttpStatus.UNAUTHORIZED.getCode(), rb.getFinal());
-			return;
-		} else if (!Utils.checkToken(params.getAsString("access-token"))) {
-			rb.setError("InvalidTokenError").setMessage("Access token is invalid");
-			sendResponse(exchange, HttpStatus.UNAUTHORIZED.getCode(), rb.getFinal());
-			return;
-		}
+		if (!processRequestToken(exchange, params)) return;
+
+		var rb = new ResponseBodyBuilder();
 
 		/*
 		 * Получение количества возвращаемых строчек консоли.
@@ -60,7 +52,7 @@ public class RconHttpController implements HttpController {
 		 * Если это количество не было указано в запросе или равняется нулю, то запрос вернёт
 		 * максимальное количество строк.
 		 */
-		int count = 0;
+		var count = 0;
 		if (!params.has("count")) {
 			count = MAX_LINES_COUNT;
 		} else if (!NumberUtils.isNumber(params.getAsString("count"))) {
@@ -72,7 +64,7 @@ public class RconHttpController implements HttpController {
 			count = params.getAsInt("count");
 		}
 
-		List<String> lines = PixplazeRootsAPI.getInstance().getConsoleBuffer().getHistory(count);
+		var lines = PixplazeRootsAPI.getInstance().getConsoleBuffer().getHistory(count);
 
 		// Попытка отправки результата запроса
 		try {
@@ -86,37 +78,37 @@ public class RconHttpController implements HttpController {
 	}
 
 	@PostHandler("/rcon/command")
-	public void handleCommandRequest(HttpExchange exchange, QueryParams params) throws IOException {
-		ResponseBodyBuilder rb = new ResponseBodyBuilder();
+	public void handlePostRconCommand(HttpExchange exchange, QueryParams params) throws IOException {
+		if (!processRequestToken(exchange, params)) return;
 
-		if (!params.has("access-token")) {
-			sendResponse(exchange, 401, rb.setError("InvalidTokenError").setMessage("No token!").getFinal());
-			return;
-		} else if (!Utils.checkToken(params.getAsString("access-token"))) {
-			sendResponse(exchange, 401, rb.setError("InvalidTokenError").setMessage("Access token is invalid").getFinal());
-			return;
-		}
+		var rb = new ResponseBodyBuilder();
 
-		String line = "";
+		// Получение отправленной команды и проверка её на валидность
+		var line = "";
 		if (!params.has("line")) {
-			sendResponse(exchange, 401, rb.setError("InvalidParamError").setMessage("No param line").getFinal());
+			rb.setError("InvalidParamError").setMessage("No parameter line");
+			sendResponse(exchange, HttpStatus.BAD_REQUEST.getCode(), rb.getFinal());
 			return;
 		} else {
 			line = params.getAsString("line");
 		}
 
 		if ("".equals(line)) {
-			sendResponse(exchange, 401, rb.setError("InvalidParamError").setMessage("line is empty").getFinal());
+			rb.setError("InvalidParamError").setMessage("Parameter line cannot be empty");
+			sendResponse(exchange, HttpStatus.BAD_REQUEST.getCode(), rb.getFinal());
 			return;
 		}
 
+		// Попытка выполнения команды и отправки ответа с результатом на запрос
 		try {
 			dispatchCommand(plugin.getServer().getConsoleSender(), line);
-			sendResponse(exchange, 200, rb.setMessage("Command sent successfully").getFinal());
+			rb.setMessage("Command sent successfully");
+			sendResponse(exchange, HttpStatus.OK.getCode(), rb.getFinal());
 		} catch (Exception e) {
 			logger.warning("[ERROR]:\tError on sending command!");
 			logger.warning(e.getMessage());
-			sendResponse(exchange, 200, rb.setMessage("Command execution error").getFinal());
+			rb.setMessage("Command execution error");
+			sendResponse(exchange, HttpStatus.OK.getCode(), rb.getFinal());
 		}
 	}
 
@@ -141,8 +133,22 @@ public class RconHttpController implements HttpController {
 		return jsonResponse;
 	}
 
+	private boolean processRequestToken(HttpExchange exchange, QueryParams params) throws IOException {
+		ResponseBodyBuilder rb = new ResponseBodyBuilder();
+		if (!params.has("access-token")) {
+			rb.setError("InvalidTokenError").setMessage("Token is required");
+			sendResponse(exchange, HttpStatus.UNAUTHORIZED.getCode(), rb.getFinal());
+			return false;
+		} else if (!Utils.checkToken(params.getAsString("access-token"))) {
+			rb.setError("InvalidTokenError").setMessage("Access token is invalid");
+			sendResponse(exchange, HttpStatus.UNAUTHORIZED.getCode(), rb.getFinal());
+			return false;
+		}
+		return true;
+	}
+
 	private void dispatchCommand(CommandSender sender, String command) {
-		logger.warning("Requested server command");
+		logger.warning("COMMAND SENT FROM HTTP-RCON:");
 		new BukkitRunnable() {
 			@Override
 			public void run() {
@@ -151,7 +157,6 @@ public class RconHttpController implements HttpController {
 				} catch (Exception e) {
 					logger.warning(e.getMessage());
 				}
-				logger.warning("Command sent");
 			}
 		}.runTask(plugin);
 	}
