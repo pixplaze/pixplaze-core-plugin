@@ -6,16 +6,40 @@ import com.sun.net.httpserver.HttpExchange;
 
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class ContextMapper {
 	private final Map<String, HashMap<String, Method>> pathMapping;
-	private final static Class<?>[] requiredTypes = new Class[] {
-			HttpExchange.class, QueryParams.class
-	};
+	private final HandlerValidator validator = new DefaultValidator();
 
-	protected ContextMapper() {
+	private static class DefaultValidator implements HandlerValidator {
+
+		final Class<?> requiredReturnType = Void.TYPE;
+		final Class<?>[] requiredParameterTypes = new Class[] {HttpExchange.class, QueryParams.class};
+
+		@Override
+		public boolean isParameterTypesValid(Method method) {
+			return HandlerValidator.getMissedRequiredParams(method, requiredParameterTypes).length == 0;
+		}
+
+		@Override
+		public boolean isReturnTypeValid(Method method) {
+			return method.getReturnType().isAssignableFrom(requiredReturnType);
+		}
+
+		@Override
+		public Class<?>[] getRequiredParameterTypes() {
+			return requiredParameterTypes;
+		}
+
+		@Override
+		public Class<?> getRequiredReturnType() {
+			return requiredReturnType;
+		}
+	}
+
+	protected ContextMapper(Method[] methods) {
 		pathMapping = new HashMap<>();
+		scanHandlers(methods);
 	}
 
 	protected void mapContext(String path, String method, Method handler) {
@@ -33,83 +57,29 @@ public class ContextMapper {
 		return this.pathMapping;
 	}
 
-	protected static ContextMapper scanHandlers(Method[] methods) throws InvalidRequestHandler {
-		var contextMapper = new ContextMapper();
+	private void scanHandlers(Method[] methods) throws InvalidRequestHandler {
 		for (var method: methods) {
 			if (method.isAnnotationPresent(RequestHandler.class)) {
-				validateHandler(method);
+				validator.validate(method);
 				var annotation = method.getAnnotation(RequestHandler.class);
-				contextMapper.mapContext(annotation.path(), annotation.method(), method);
+				mapContext(annotation.path(), annotation.method(), method);
 			} else if (method.isAnnotationPresent(GetHandler.class)) {
-				validateHandler(method);
+				validator.validate(method);
 				var annotation = method.getAnnotation(GetHandler.class);
-				contextMapper.mapContext(annotation.value(), annotation.method(), method);
+				mapContext(annotation.value(), annotation.method(), method);
 			} else if (method.isAnnotationPresent(PostHandler.class)) {
-				validateHandler(method);
+				validator.validate(method);
 				var annotation = method.getAnnotation(PostHandler.class);
-				contextMapper.mapContext(annotation.value(), annotation.method(), method);
+				mapContext(annotation.value(), annotation.method(), method);
 			} else if (method.isAnnotationPresent(PutHandler.class)) {
-				validateHandler(method);
+				validator.validate(method);
 				var annotation = method.getAnnotation(PutHandler.class);
-				contextMapper.mapContext(annotation.value(), annotation.method(), method);
+				mapContext(annotation.value(), annotation.method(), method);
 			} else if (method.isAnnotationPresent(DeleteHandler.class)) {
-				validateHandler(method);
+				validator.validate(method);
 				var annotation = method.getAnnotation(DeleteHandler.class);
-				contextMapper.mapContext(annotation.value(), annotation.method(), method);
+				mapContext(annotation.value(), annotation.method(), method);
 			}
 		}
-		return contextMapper;
-	}
-
-	protected static void validateHandler(Method method) throws InvalidRequestHandler {
-		var missedRequiredParams = getMissedRequiredParams(method);
-		if (missedRequiredParams.length > 0) {
-			throw new InvalidRequestHandler(
-					"Invalid handler params in method %s.%s(%s)!%nMissed: %s"
-					.formatted(
-							method.getDeclaringClass().getCanonicalName(),
-							method.getName(),
-							stringifyTypes(method.getParameterTypes()),
-							stringifyTypes(missedRequiredParams)
-					)
-			);
-		}
-		if (!isReturnTypeValid(method))
-			throw new InvalidRequestHandler(
-					"Invalid handler return type in %s! Expected: %s."
-					.formatted(method.getName(), "void"));
-	}
-
-	protected static Class<?>[] getMissedRequiredParams(Method method) {
-		var methodTypes = method.getParameterTypes();
-
-		var requiredPresent = new LinkedHashMap<Class<?>, Boolean>();
-
-		outer:
-		for (var requiredType: requiredTypes) {
-			for (var methodType: methodTypes) {
-				if (methodType.isAssignableFrom(requiredType)) {
-					requiredPresent.put(requiredType, true);
-					continue outer;
-				}
-			}
-			requiredPresent.put(requiredType, false);
-		}
-
-		return requiredPresent.entrySet()
-				.stream()
-				.filter(entry -> !entry.getValue())
-				.map(Map.Entry::getKey).toArray(Class[]::new);
-	}
-
-	protected static boolean isReturnTypeValid(Method method) {
-		var type = method.getReturnType();
-		return type.isAssignableFrom(Void.TYPE);
-	}
-
-	private static String stringifyTypes(Class<?>[] types) {
-		return Arrays.stream(types)
-				.map(Class::getSimpleName)
-				.collect(Collectors.joining(", "));
 	}
 }

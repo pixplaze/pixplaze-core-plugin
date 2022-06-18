@@ -79,7 +79,7 @@ public final class PixplazeHttpServer {
      */
     public void mount(HttpController controller) {
         var allMethods = controller.getClass().getMethods();
-        var contextMapper = ContextMapper.scanHandlers(allMethods);
+        var contextMapper = new ContextMapper(allMethods);
 
         contextMapper.getContextMapping().forEach((context, mapping) -> httpServer.createContext(context, exchange -> {
             var method = exchange.getRequestMethod();
