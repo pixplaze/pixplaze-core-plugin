@@ -79,37 +79,37 @@ public class RconHttpController implements HttpController {
 
 	@PostHandler("/rcon/command")
 	public void handlePostRconCommand(HttpExchange exchange, QueryParams params) throws IOException {
-		if (!processRequestToken(exchange, params)) return;
-
-		var rb = new ResponseBodyBuilder();
-
-		// Получение отправленной команды и проверка её на валидность
-		var line = "";
-		if (!params.has("line")) {
-			rb.setError("InvalidParamError").setMessage("No parameter line");
-			sendResponse(exchange, HttpStatus.BAD_REQUEST.getCode(), rb.getFinal());
-			return;
-		} else {
-			line = params.getAsString("line");
-		}
-
-		if ("".equals(line)) {
-			rb.setError("InvalidParamError").setMessage("Parameter line cannot be empty");
-			sendResponse(exchange, HttpStatus.BAD_REQUEST.getCode(), rb.getFinal());
-			return;
-		}
-
-		// Попытка выполнения команды и отправки ответа с результатом на запрос
-		try {
-			dispatchCommand(plugin.getServer().getConsoleSender(), line);
-			rb.setMessage("Command sent successfully");
-			sendResponse(exchange, HttpStatus.OK.getCode(), rb.getFinal());
-		} catch (Exception e) {
-			logger.warning("[ERROR]:\tError on sending command!");
-			logger.warning(e.getMessage());
-			rb.setMessage("Command execution error");
-			sendResponse(exchange, HttpStatus.OK.getCode(), rb.getFinal());
-		}
+//		if (!processRequestToken(exchange, params)) return;
+//
+//		var rb = new ResponseBodyBuilder();
+//
+//		// Получение отправленной команды и проверка её на валидность
+//		var line = "";
+//		if (!params.has("line")) {
+//			rb.setError("InvalidParamError").setMessage("No parameter line");
+//			sendResponse(exchange, HttpStatus.BAD_REQUEST.getCode(), rb.getFinal());
+//			return;
+//		} else {
+//			line = params.getAsString("line");
+//		}
+//
+//		if ("".equals(line)) {
+//			rb.setError("InvalidParamError").setMessage("Parameter line cannot be empty");
+//			sendResponse(exchange, HttpStatus.BAD_REQUEST.getCode(), rb.getFinal());
+//			return;
+//		}
+//
+//		// Попытка выполнения команды и отправки ответа с результатом на запрос
+//		try {
+//			dispatchCommand(plugin.getServer().getConsoleSender(), line);
+//			rb.setMessage("Command sent successfully");
+//			sendResponse(exchange, HttpStatus.OK.getCode(), rb.getFinal());
+//		} catch (Exception e) {
+//			logger.warning("[ERROR]:\tError on sending command!");
+//			logger.warning(e.getMessage());
+//			rb.setMessage("Command execution error");
+//			sendResponse(exchange, HttpStatus.OK.getCode(), rb.getFinal());
+//		}
 	}
 
 	private void sendResponse(HttpExchange exchange, int code, String responseBody) throws IOException {

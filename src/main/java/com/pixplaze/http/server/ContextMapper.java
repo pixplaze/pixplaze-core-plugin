@@ -5,11 +5,14 @@ import com.pixplaze.http.exceptions.InvalidRequestHandler;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class ContextMapper {
 	private final Map<String, HashMap<String, Method>> pathMapping;
+	private final static Class<?>[] requiredTypes = new Class[] {
+			HttpExchange.class, QueryParams.class
+	};
 
 	protected ContextMapper() {
 		pathMapping = new HashMap<>();
@@ -59,12 +62,17 @@ public class ContextMapper {
 	}
 
 	protected static void validateHandler(Method method) throws InvalidRequestHandler {
-		if (!isRequiredParametersPresent(method)) {
+		var missedRequiredParams = getMissedRequiredParams(method);
+		if (missedRequiredParams.length > 0) {
 			throw new InvalidRequestHandler(
-					"Invalid handler params in %s! Handler method requires: %s, %s."
-					.formatted(method.getName(),
-							   HttpExchange.class.getSimpleName(),
-							   QueryParams.class.getSimpleName()));
+					"Invalid handler params in method %s.%s(%s)!%nMissed: %s"
+					.formatted(
+							method.getDeclaringClass().getCanonicalName(),
+							method.getName(),
+							stringifyTypes(method.getParameterTypes()),
+							stringifyTypes(missedRequiredParams)
+					)
+			);
 		}
 		if (!isReturnTypeValid(method))
 			throw new InvalidRequestHandler(
@@ -72,22 +80,36 @@ public class ContextMapper {
 					.formatted(method.getName(), "void"));
 	}
 
-	protected static boolean isRequiredParametersPresent(Method method) {
-		var types = method.getParameterTypes();
-		var isHttpExchangePresent = false;
-		var isQueryParamsPresent = false;
+	protected static Class<?>[] getMissedRequiredParams(Method method) {
+		var methodTypes = method.getParameterTypes();
 
-		for (var type: types) {
-			if (type.isAssignableFrom(HttpExchange.class))
-				isHttpExchangePresent = true;
-			if (type.isAssignableFrom(QueryParams.class))
-				isQueryParamsPresent = true;
+		var requiredPresent = new LinkedHashMap<Class<?>, Boolean>();
+
+		outer:
+		for (var requiredType: requiredTypes) {
+			for (var methodType: methodTypes) {
+				if (methodType.isAssignableFrom(requiredType)) {
+					requiredPresent.put(requiredType, true);
+					continue outer;
+				}
+			}
+			requiredPresent.put(requiredType, false);
 		}
-		return isHttpExchangePresent && isQueryParamsPresent;
+
+		return requiredPresent.entrySet()
+				.stream()
+				.filter(entry -> !entry.getValue())
+				.map(Map.Entry::getKey).toArray(Class[]::new);
 	}
 
 	protected static boolean isReturnTypeValid(Method method) {
 		var type = method.getReturnType();
 		return type.isAssignableFrom(Void.TYPE);
+	}
+
+	private static String stringifyTypes(Class<?>[] types) {
+		return Arrays.stream(types)
+				.map(Class::getSimpleName)
+				.collect(Collectors.joining(", "));
 	}
 }
