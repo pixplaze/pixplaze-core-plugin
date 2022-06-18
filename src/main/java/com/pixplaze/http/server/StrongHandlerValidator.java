@@ -8,6 +8,8 @@ import java.lang.reflect.Method;
  * Возвращаемый тип - {@code void};
  * Порядок аргументов метода-обработчика имеет значение;
  * Рекомендуемые аргументы обработчика: {@link HttpExchange}, {@link QueryParams}.
+ *
+ * @since 0.1.1-indev
  */
 public class StrongHandlerValidator implements HandlerValidator {
 

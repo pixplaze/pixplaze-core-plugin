@@ -22,7 +22,7 @@ import static com.pixplaze.util.Types.stringifyTypes;
  * @see SoftHandlerValidator
  * @see StrongHandlerValidator
  *
- * @since 0.1.0
+ * @since 0.1.1-indev
  */
 public interface HandlerValidator {
 	/**
