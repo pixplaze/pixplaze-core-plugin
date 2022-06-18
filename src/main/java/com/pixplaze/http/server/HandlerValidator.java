@@ -8,11 +8,37 @@ import java.util.Map;
 
 import static com.pixplaze.util.Types.stringifyTypes;
 
+/**
+ * Интерфейс описывающий валидатор метода-обработчика запроса.
+ * Наследники интерфейса проверяют на корректность методы-обработчики
+ * в контроллерах запросов ({@link com.pixplaze.http.HttpController}).
+ *
+ * Вызываются в {@link com.pixplaze.http.server.ContextMapper}, при маппинге
+ * метода и контекста.
+ *
+ * При неправильных аргументах или возвращаемом типе метода-обработчика,
+ * выбрасывает исключение, при этом, контекст не создаётся.
+ *
+ * @see SoftHandlerValidator
+ * @see StrongHandlerValidator
+ *
+ * @since 0.1.0
+ */
 public interface HandlerValidator {
+	/**
+	 * Общая валидация обработчика {@code method}.
+	 * По умолчанию проверяет корректность аргументов метода
+	 * и возвращаемый тип.
+	 *
+	 * @param method метод-обработчик, проверяемый на корректность.
+	 *
+	 * @exception InvalidRequestHandler если любое из условий
+	 * корректности не соблюдено.
+	 */
 	default void validate(Method method) {
 		if (!isParameterTypesValid(method)) {
 			throw new InvalidRequestHandler(
-					"Invalid handler params in method %s.%s(%s)!%nExpected: %s"
+					"Invalid handler params in method %s.%s(%s)! Expected: %s"
 					.formatted(
 							method.getDeclaringClass().getCanonicalName(),
 							method.getName(),
@@ -24,11 +50,24 @@ public interface HandlerValidator {
 
 		if (!isReturnTypeValid(method))
 			throw new InvalidRequestHandler(
-					"Invalid handler return type in %s! Expected: %s."
-					.formatted(method.getName(), getRequiredReturnType())
+					"Invalid handler return type in %s.%s(...)! Expected: %s."
+					.formatted(
+							method.getDeclaringClass().getCanonicalName(),
+							method.getName(),
+							getRequiredReturnType()
+					)
 			);
 	}
 
+	/**
+	 * Возвращает те типы из списка {@code requiredParameterTypes}, которые не
+	 * принимает метод {@code method} как аргументы.
+	 *
+	 * @param method метод, в котором проверяется наличие аргументов;
+	 * @param requiredParameterTypes типы аргументов, по которым проверяется метод.
+	 *
+	 * @return список типов, которых не хватает в {@code method}.
+	 */
 	static Class<?>[] getMissedRequiredParams(Method method, Class<?>[] requiredParameterTypes) {
 		var methodTypes = method.getParameterTypes();
 
@@ -51,11 +90,31 @@ public interface HandlerValidator {
 				.map(Map.Entry::getKey).toArray(Class[]::new);
 	}
 
+	/**
+	 * Метод, проверяющий корректность аргументов метода-обработчика {@code method}.
+	 * @param method метод, аргументы которого проверяются.
+	 * @return {@code true}, если аргументы прошли проверку, {@code false}
+	 * - если нет.
+	 */
 	boolean isParameterTypesValid(Method method);
 
+	/**
+	 * Метод, проверяющий корректность возвращаемого типа метода-обработчика {@code method}.
+	 * @param method метод, возвращаемый тип которого проверяется.
+	 * @return {@code true}, если возвращаемый тип прошёл проверку, {@code false}
+	 * - если нет.
+	 */
 	boolean isReturnTypeValid(Method method);
 
+	/**
+	 * Возвращает массив типов рекомендуемых арументов.
+	 * @return рекомендуемый массив типов.
+	 */
 	Class<?>[] getRequiredParameterTypes();
 
+	/**
+	 * Возвращает тип рекомендованый для метода-обработчика, как возвращаемый тип.
+	 * @return рекомендуемый возвращаемый тип метода-обработчика.
+	 */
 	Class<?> getRequiredReturnType();
 }
