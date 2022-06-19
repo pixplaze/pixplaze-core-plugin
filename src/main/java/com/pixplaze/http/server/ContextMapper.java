@@ -8,7 +8,7 @@ import java.util.*;
 
 public class ContextMapper {
 	private final Map<String, HashMap<String, Method>> pathMapping;
-	private final HandlerValidator validator = new MediumHandlerValidator();
+	private final HandlerValidator validator = new SoftHandlerValidator(); // TODO: Изменить обранто на StrongHandlerValidator
 
 	protected ContextMapper(Method[] methods) {
 		pathMapping = new HashMap<>();

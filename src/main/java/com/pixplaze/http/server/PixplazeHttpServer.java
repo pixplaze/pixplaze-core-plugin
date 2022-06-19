@@ -1,10 +1,13 @@
 package com.pixplaze.http.server;
 
+import com.google.gson.Gson;
 import com.pixplaze.exceptions.HttpServerException;
 import com.pixplaze.exceptions.InvalidAddressException;
 import com.pixplaze.exceptions.CannotDefineAddressException;
 import com.pixplaze.http.HttpController;
+import com.pixplaze.http.ResponseBodyBuilder;
 import com.pixplaze.http.exceptions.BadMethodException;
+import com.pixplaze.http.exceptions.HttpException;
 import com.pixplaze.plugin.PixplazeRootsAPI;
 import com.pixplaze.util.Inet;
 
@@ -116,12 +119,26 @@ public final class PixplazeHttpServer {
                         String method,
                         Map<String, Method> mapping,
                         HttpExchange exchange,
-                        QueryParams params) throws InvocationTargetException,
-                                                   IllegalAccessException,
-                                                   BadMethodException {
+                        QueryParams params) throws
+            InvocationTargetException,
+            IllegalAccessException,
+            BadMethodException,
+            IOException
+    {
+        try {
+
+        } catch (HttpException e) {
+
+        } catch (Throwable e) {
+
+        }
         var handler = mapping.get(method);
         if (handler != null) {
-            handler.invoke(controller, exchange, params);
+            var result = handler.invoke(controller, exchange, params);
+            var gson = new Gson();
+            var bytes = gson.toJson(result).getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
         } else {
             throw new BadMethodException(method, context);
         }

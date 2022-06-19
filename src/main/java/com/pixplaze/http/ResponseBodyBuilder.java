@@ -2,6 +2,7 @@ package com.pixplaze.http;
 
 import com.google.gson.JsonObject;
 
+@Deprecated(since = "0.1.2-indev", forRemoval = true)
 public class ResponseBodyBuilder {
 
     private String message = null;
