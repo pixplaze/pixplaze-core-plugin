@@ -5,7 +5,6 @@ import com.pixplaze.exceptions.InvalidAddressException;
 import com.pixplaze.exceptions.CannotDefineAddressException;
 import com.pixplaze.http.HttpController;
 import com.pixplaze.http.exceptions.BadMethodException;
-import com.pixplaze.http.exceptions.InvalidRequestHandler;
 import com.pixplaze.plugin.PixplazeRootsAPI;
 import com.pixplaze.util.Inet;
 
@@ -86,7 +85,7 @@ public final class PixplazeHttpServer {
             var params = new QueryParams(exchange.getRequestURI().getQuery());
             controller.beforeEach(exchange);
             try {
-                this.observe(controller, context, method, mapping, exchange, params);
+                this.handle(controller, context, method, mapping, exchange, params);
             } catch (BadMethodException e) {
                 var message = e.getMessage().getBytes(StandardCharsets.UTF_8);
                 exchange.sendResponseHeaders(BAD_METHOD.getCode(), message.length);
@@ -112,14 +111,14 @@ public final class PixplazeHttpServer {
     }
 
     // TODO: Упростить код, уменьшить количество параметров
-    private void observe(HttpController controller,
-                         String context,
-                         String method,
-                         Map<String, Method> mapping,
-                         HttpExchange exchange,
-                         QueryParams params) throws InvocationTargetException,
-                                                    IllegalAccessException,
-                                                    BadMethodException {
+    private void handle(HttpController controller,
+                        String context,
+                        String method,
+                        Map<String, Method> mapping,
+                        HttpExchange exchange,
+                        QueryParams params) throws InvocationTargetException,
+                                                   IllegalAccessException,
+                                                   BadMethodException {
         var handler = mapping.get(method);
         if (handler != null) {
             handler.invoke(controller, exchange, params);

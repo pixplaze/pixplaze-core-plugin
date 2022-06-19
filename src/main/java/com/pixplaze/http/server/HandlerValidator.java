@@ -54,7 +54,7 @@ public interface HandlerValidator {
 					.formatted(
 							method.getDeclaringClass().getCanonicalName(),
 							method.getName(),
-							getRequiredReturnType()
+							getRequiredReturnType() != null? getRequiredReturnType() : "any not void"
 					)
 			);
 	}
