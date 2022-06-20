@@ -29,7 +29,7 @@ public class ResponseBuilder {
 		this.charset = StandardCharsets.UTF_8;
 	}
 
-	private record BadResponse(Integer code, String message, String error) {}
+	private record BadResponse(Integer code, String error, String message) {}
 
 	public ResponseBuilder append(Throwable error) {
 		this.error = new HttpException(HttpStatus.INTERNAL_ERROR, error, error.getMessage());
@@ -80,17 +80,21 @@ public class ResponseBuilder {
 			}
 
 			if (this.error != null) {
-				this.body = new BadResponse(
-						this.error.getStatus().getCode(),
-						this.error.getCause().getClass().getSimpleName(),
-						this.error.getStatus().getMessage()
-				);
+				var code = this.error.getStatus().getCode();
+				var error = this.error.getCause().getClass().getSimpleName();
+				var message = this.error.getCause().getMessage();
+
+				if (message == null || message.isBlank())
+					message = this.error.getStatus().getMessage();
+
+				this.body = new BadResponse(code, error, message);
 				this.bytes = gson.toJson(this.body).getBytes(charset);
+
 				return this;
 			}
 
 			this.status = HttpStatus.INTERNAL_ERROR;
-			this.body = new BadResponse(this.status.getCode(), "No response data", null);
+			this.body = new BadResponse(this.status.getCode(), null, "No response data");
 			this.bytes = gson.toJson(this.body).getBytes(charset);
 		}
 		return this;

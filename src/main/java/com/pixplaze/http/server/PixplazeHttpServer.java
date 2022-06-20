@@ -15,6 +15,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.*;
 import java.nio.charset.Charset;
@@ -87,16 +88,7 @@ public final class PixplazeHttpServer {
             var method = exchange.getRequestMethod();
             var params = new QueryParams(exchange.getRequestURI().getQuery());
             controller.beforeEach(exchange);
-            try {
-                this.handle(controller, context, method, mapping, exchange, params);
-            } catch (BadMethodException e) {
-                var message = e.getMessage().getBytes(StandardCharsets.UTF_8);
-                exchange.sendResponseHeaders(BAD_METHOD.getCode(), message.length);
-                exchange.getResponseBody().write(message);
-                exchange.getResponseBody().flush();
-            } catch (Throwable e) {
-                logger.warning("Error occurred: %s\tMessage: %s".formatted(e.getClass().getSimpleName(), e.getMessage()));
-            }
+            this.handle(controller, context, method, mapping, exchange, params);
             exchange.close();
         }));
 
@@ -126,15 +118,19 @@ public final class PixplazeHttpServer {
             var handler = mapping.get(method);
             if (handler != null) {
                 var result = handler.invoke(controller, exchange, params);
+                logger.warning(result.toString());
                 rb.append(result);
             } else {
                 throw new BadMethodException(method, context);
             }
         } catch (HttpException e) {
             rb.append(e);
-
+            logger.warning(e.getMessage());
+        } catch (InvocationTargetException e) {
+            rb.append(e.getCause());
         } catch (Throwable e) {
             rb.append(e);
+            logger.warning(e.fillInStackTrace().getLocalizedMessage());
         }
         makeResponse(exchange, rb);
     }

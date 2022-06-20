@@ -39,11 +39,11 @@ public class RconHttpController implements HttpController {
 	}
 
 	@GetHandler("/rcon/lines")
-	public List<String> handleGetRconLines(HttpExchange exchange, QueryParams params) throws IOException {
+	public String[] handleGetRconLines(HttpExchange exchange, QueryParams params) throws IOException {
 		final var MAX_LINES_COUNT = plugin.getConsoleBuffer().getSize();
 
-		if (!processRequestToken(exchange, params)) throw new RuntimeException("Ti pidor");
-		return PixplazeRootsAPI.getInstance().getConsoleBuffer().getHistory(params.getAsInt("count"));
+//		if (!processRequestToken(exchange, params)) throw new RuntimeException("Ti pidor");
+		return PixplazeRootsAPI.getInstance().getConsoleBuffer().getHistory(params.getAsInt("count")).toArray(String[]::new);
 
 //		var rb = new ResponseBodyBuilder();
 //
