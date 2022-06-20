@@ -6,16 +6,16 @@ public class HttpException extends RuntimeException {
 
 	private final HttpStatus status;
 
-	public HttpException() {
-		this(HttpStatus.INTERNAL_ERROR);
+	public HttpException(Throwable cause) {
+		this(HttpStatus.INTERNAL_ERROR, cause);
 	}
 
-	public HttpException(final HttpStatus status) {
-		this(status, status.getMessage());
+	public HttpException(final HttpStatus status, Throwable cause) {
+		this(status, cause, status.getMessage());
 	}
 
-	public HttpException(final HttpStatus status, final String message) {
-		super(message);
+	public HttpException(final HttpStatus status, Throwable cause, final String message) {
+		super(message, cause);
 		this.status = status;
 	}
 
