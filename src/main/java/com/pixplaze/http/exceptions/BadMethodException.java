@@ -8,7 +8,7 @@ public class BadMethodException extends HttpException {
 	}
 
 	public BadMethodException(String message) {
-		super(HttpStatus.BAD_METHOD, message);
+		super(HttpStatus.BAD_METHOD, null, message);
 	}
 
 	public BadMethodException(String method, String context) {

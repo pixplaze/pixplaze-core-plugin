@@ -5,6 +5,7 @@ import com.pixplaze.exceptions.HttpServerException;
 import com.pixplaze.exceptions.InvalidAddressException;
 import com.pixplaze.exceptions.CannotDefineAddressException;
 import com.pixplaze.http.HttpController;
+import com.pixplaze.http.HttpStatus;
 import com.pixplaze.http.exceptions.BadMethodException;
 import com.pixplaze.http.exceptions.HttpException;
 import com.pixplaze.plugin.PixplazeRootsAPI;
@@ -120,106 +121,34 @@ public final class PixplazeHttpServer {
                         HttpExchange exchange,
                         QueryParams params) throws BadMethodException
     {
-        class ResponseBuilder {
-            private final Gson gson = new Gson();
-            private final Charset charset = StandardCharsets.UTF_8;
-
-            private Integer code;
-            private Throwable error;
-
-            private String message;
-            private byte[] body;
-
-            public ResponseBuilder(Integer code, Throwable error, String message, Object body) {
-                this.code = code;
-                this.error = error;
-                this.message = message;
-                this.body = gson.toJson(body).getBytes(charset);
-            }
-
-            public Integer getCode() {
-                return code;
-            }
-
-            public ResponseBuilder setCode(Integer code) {
-                this.code = code;
-                return this;
-            }
-
-            public Throwable getError() {
-                return error;
-            }
-
-            public ResponseBuilder setError(Throwable error) {
-                this.error = error;
-                return this;
-            }
-
-            public ResponseBuilder setError(HttpException error) {
-                this.error = error.getCause();
-                this.code = error.getStatus().getCode();
-                this.message = error.getStatus().getMessage();
-                return this;
-            }
-
-            public String getMessage() {
-                return message;
-            }
-
-            public ResponseBuilder setMessage(String message) {
-                this.message = message;
-                return this;
-            }
-
-            public byte[] getBody() {
-                return body;
-            }
-
-            public ResponseBuilder setBody(byte[] body) {
-                this.body = body;
-                return this;
-            }
-
-            public ResponseBuilder setBody(Object body) {
-                this.body = gson.toJson(body).getBytes(charset);
-                return this;
-            }
-
-            public int getLength() {
-                return this.body.length;
-            }
-
-            public byte[] toBytes() {
-                if ()
-            }
-        }
-
-        byte[] body;
+        var rb = new ResponseBuilder();
         try {
             var handler = mapping.get(method);
             if (handler != null) {
-                var gson = new Gson();
                 var result = handler.invoke(controller, exchange, params);
-
-                body = gson.toJson(result).getBytes(StandardCharsets.UTF_8);
-
-                exchange.sendResponseHeaders(200, body.length);
-                exchange.getResponseBody().write(body);
+                rb.append(result);
             } else {
                 throw new BadMethodException(method, context);
             }
         } catch (HttpException e) {
-            record BadResponse(int code, Throwable error, String message) {}
-
-            var code = e.getStatus();
-            var error = e.getCause();
-            var message = e.getMessage();
+            rb.append(e);
 
         } catch (Throwable e) {
-
+            rb.append(e);
         }
-        exchange.sendResponseHeaders(200, body.length);
-        exchange.getResponseBody().write(body);
+        makeResponse(exchange, rb);
+    }
+
+    private void makeResponse(HttpExchange exchange, ResponseBuilder builder) {
+        try {
+            exchange.sendResponseHeaders(builder.getCode(), builder.getLength());
+            exchange.getResponseBody().write(builder.toBytes());
+        } catch (IOException e) {
+            throw new RuntimeException(
+                    "Can not serve %s %s request"
+                    .formatted(exchange.getRequestMethod(), exchange.getRequestURI())
+            );
+        }
     }
 
     public void start() {

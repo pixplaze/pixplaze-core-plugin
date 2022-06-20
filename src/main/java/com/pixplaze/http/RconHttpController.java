@@ -39,42 +39,43 @@ public class RconHttpController implements HttpController {
 	}
 
 	@GetHandler("/rcon/lines")
-	public void handleGetRconLines(HttpExchange exchange, QueryParams params) throws IOException {
+	public List<String> handleGetRconLines(HttpExchange exchange, QueryParams params) throws IOException {
 		final var MAX_LINES_COUNT = plugin.getConsoleBuffer().getSize();
 
-		if (!processRequestToken(exchange, params)) return;
+		if (!processRequestToken(exchange, params)) throw new RuntimeException("Ti pidor");
+		return PixplazeRootsAPI.getInstance().getConsoleBuffer().getHistory(params.getAsInt("count"));
 
-		var rb = new ResponseBodyBuilder();
-
-		/*
-		 * Получение количества возвращаемых строчек консоли.
-		 *
-		 * Если это количество не было указано в запросе или равняется нулю, то запрос вернёт
-		 * максимальное количество строк.
-		 */
-		var count = 0;
-		if (!params.has("count")) {
-			count = MAX_LINES_COUNT;
-		} else if (!NumberUtils.isNumber(params.getAsString("count"))) {
-			rb.setError("InvalidCountError").setMessage("Parameter count must be number!");
-			sendResponse(exchange, HttpStatus.BAD_REQUEST.getCode(), rb.getFinal());
-		} else if (params.getAsInt("count") == 0) {
-			count = MAX_LINES_COUNT;
-		} else {
-			count = params.getAsInt("count");
-		}
-
-		var lines = PixplazeRootsAPI.getInstance().getConsoleBuffer().getHistory(count);
-
-		// Попытка отправки результата запроса
-		try {
-			rb.setResponse(linesToJsonResponse(lines)).setMessage("Command request success");
-			sendResponse(exchange, HttpStatus.OK.getCode(), rb.getFinal());
-		} catch (Exception e) {
-			logger.warning(e.getMessage());
-			rb.setError(e.getClass().getTypeName()).setMessage(e.getMessage());
-			sendResponse(exchange, HttpStatus.INTERNAL_ERROR.getCode(), rb.getFinal());
-		}
+//		var rb = new ResponseBodyBuilder();
+//
+//		/*
+//		 * Получение количества возвращаемых строчек консоли.
+//		 *
+//		 * Если это количество не было указано в запросе или равняется нулю, то запрос вернёт
+//		 * максимальное количество строк.
+//		 */
+//		var count = 0;
+//		if (!params.has("count")) {
+//			count = MAX_LINES_COUNT;
+//		} else if (!NumberUtils.isNumber(params.getAsString("count"))) {
+//			rb.setError("InvalidCountError").setMessage("Parameter count must be number!");
+//			sendResponse(exchange, HttpStatus.BAD_REQUEST.getCode(), rb.getFinal());
+//		} else if (params.getAsInt("count") == 0) {
+//			count = MAX_LINES_COUNT;
+//		} else {
+//			count = params.getAsInt("count");
+//		}
+//
+//		var lines = PixplazeRootsAPI.getInstance().getConsoleBuffer().getHistory(count);
+//
+//		// Попытка отправки результата запроса
+//		try {
+//			rb.setResponse(linesToJsonResponse(lines)).setMessage("Command request success");
+//			sendResponse(exchange, HttpStatus.OK.getCode(), rb.getFinal());
+//		} catch (Exception e) {
+//			logger.warning(e.getMessage());
+//			rb.setError(e.getClass().getTypeName()).setMessage(e.getMessage());
+//			sendResponse(exchange, HttpStatus.INTERNAL_ERROR.getCode(), rb.getFinal());
+//		}
 	}
 
 	@PostHandler("/rcon/command")
