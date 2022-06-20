@@ -42,8 +42,13 @@ public class RconHttpController implements HttpController {
 	public String[] handleGetRconLines(HttpExchange exchange, QueryParams params) throws IOException {
 		final var MAX_LINES_COUNT = plugin.getConsoleBuffer().getSize();
 
-//		if (!processRequestToken(exchange, params)) throw new RuntimeException("Ti pidor");
-		return PixplazeRootsAPI.getInstance().getConsoleBuffer().getHistory(params.getAsInt("count")).toArray(String[]::new);
+		if (!processRequestToken(exchange, params)) throw new RuntimeException("Ti pidor");
+
+//		if (params.has("count")) {
+			var lines = plugin.getConsoleBuffer().getHistory(params.getAsInt("count"));
+			return lines.toArray(String[]::new);
+//		}
+//		return null;
 
 //		var rb = new ResponseBodyBuilder();
 //

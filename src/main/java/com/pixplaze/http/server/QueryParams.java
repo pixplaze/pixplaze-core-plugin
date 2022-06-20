@@ -41,11 +41,11 @@ public class QueryParams {
 	}
 
 	public float getAsFloat(String key) {
-		return Float.parseFloat(key);
+		return Float.parseFloat(variables.get(key));
 	}
 
 	public boolean getAsBoolean(String key) {
-		return Boolean.parseBoolean(key);
+		return Boolean.parseBoolean(variables.get(key));
 	}
 
 	public static Map<String, String> parse(String query) throws QueryParseException {

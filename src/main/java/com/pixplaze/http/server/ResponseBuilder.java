@@ -22,6 +22,8 @@ public class ResponseBuilder {
 	private Object body;
 	private byte[] bytes;
 
+	private record BadResponse(Integer code, String error, String message) {}
+
 	public ResponseBuilder() {
 		this.gson = new GsonBuilder()
 				.setFieldNamingStrategy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
@@ -29,18 +31,18 @@ public class ResponseBuilder {
 		this.charset = StandardCharsets.UTF_8;
 	}
 
-	private record BadResponse(Integer code, String error, String message) {}
-
 	public ResponseBuilder append(Throwable error) {
-		this.error = new HttpException(HttpStatus.INTERNAL_ERROR, error, error.getMessage());
-		this.status = this.error.getStatus();
+//		this.flush();
+		this.status = HttpStatus.INTERNAL_ERROR;
+		this.error = new HttpException(this.status, error, error.getMessage());
 		this.hasChanges = true;
 		return this;
 	}
 
 	public ResponseBuilder append(HttpException error) {
+//		this.flush();
+		this.status = error.getStatus();
 		this.error = error;
-		this.status = this.error.getStatus();
 		this.hasChanges = true;
 		return this;
 	}
@@ -66,9 +68,19 @@ public class ResponseBuilder {
 		return this;
 	}
 
+	public ResponseBuilder flush() {
+		this.error = null;
+		this.status = null;
+		this.bytes = null;
+		this.body = null;
+		return this;
+	}
+
 	public ResponseBuilder commit() {
 		if (this.hasChanges) {
 			this.hasChanges = false;
+
+			if (this.status == null) this.status = HttpStatus.INTERNAL_ERROR;
 
 			if (this.status.isSuccessful()) {
 				if (this.bytes != null && this.bytes.length > 0) {
@@ -79,7 +91,10 @@ public class ResponseBuilder {
 				}
 			}
 
-			if (this.error != null) {
+			if (this.status.isServerError() ||
+				this.status.isClientError() ||
+				this.status.isRedirected())
+			{
 				var code = this.error.getStatus().getCode();
 				var error = this.error.getCause().getClass().getSimpleName();
 				var message = this.error.getCause().getMessage();
@@ -97,6 +112,7 @@ public class ResponseBuilder {
 			this.body = new BadResponse(this.status.getCode(), null, "No response data");
 			this.bytes = gson.toJson(this.body).getBytes(charset);
 		}
+
 		return this;
 	}
 

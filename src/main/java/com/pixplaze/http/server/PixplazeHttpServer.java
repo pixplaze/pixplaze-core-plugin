@@ -11,6 +11,7 @@ import com.pixplaze.http.exceptions.HttpException;
 import com.pixplaze.plugin.PixplazeRootsAPI;
 import com.pixplaze.util.Inet;
 
+import com.pixplaze.util.Optional;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
@@ -118,8 +119,7 @@ public final class PixplazeHttpServer {
             var handler = mapping.get(method);
             if (handler != null) {
                 var result = handler.invoke(controller, exchange, params);
-                logger.warning(result.toString());
-                rb.append(result);
+                Optional.runNotNull(result, rb::append); // TODO: fix empty response
             } else {
                 throw new BadMethodException(method, context);
             }
@@ -130,7 +130,7 @@ public final class PixplazeHttpServer {
             rb.append(e.getCause());
         } catch (Throwable e) {
             rb.append(e);
-            logger.warning(e.fillInStackTrace().getLocalizedMessage());
+            logger.warning(e.getMessage());
         }
         makeResponse(exchange, rb);
     }
