@@ -28,13 +28,26 @@ public class QueryParams {
 		return variables.containsKey(name);
 	}
 
+	public String getAsString(String key) {
+		return variables.get(key);
+	}
+
 	public int getAsInt(String key) {
 		return Integer.parseInt(variables.get(key));
 	}
 
-	public String getAsString(String key) {
-		return variables.get(key);
-	}
+// TODO: изменить API извлечения параметра запроса на похожее:
+//	public Optional<Integer> getAsInt(String key) {
+//		var value = variables.get(key);
+//		Optional<Integer> result;
+//		try {
+//			result = Optional.of(Integer.parseInt(value));
+//		} catch (Exception e) {
+//			result = Optional.empty();
+//		}
+//
+//		return result;
+//	}
 
 	public double getAsDouble(String key) {
 		return Double.parseDouble(variables.get(key));

@@ -128,6 +128,7 @@ public final class PixplazeHttpServer {
             logger.warning(e.getMessage());
         } catch (InvocationTargetException e) {
             rb.append(e.getCause());
+            logger.warning(e.getCause().getMessage());
         } catch (Throwable e) {
             rb.append(e);
             logger.warning(e.getMessage());

@@ -10,6 +10,10 @@ import com.pixplaze.http.exceptions.HttpException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
+
+/**
+ * @since 0.1.2-indev
+ */
 public class ResponseBuilder {
 	private final Gson gson;
 	private final Charset charset;
@@ -32,19 +36,19 @@ public class ResponseBuilder {
 	}
 
 	public ResponseBuilder append(Throwable error) {
-//		this.flush();
-		this.status = HttpStatus.INTERNAL_ERROR;
-		this.error = new HttpException(this.status, error, error.getMessage());
-		this.hasChanges = true;
-		return this;
+		return this.setError(error);
 	}
 
 	public ResponseBuilder append(HttpException error) {
-//		this.flush();
-		this.status = error.getStatus();
-		this.error = error;
-		this.hasChanges = true;
-		return this;
+		return this.setError(error);
+	}
+
+	public ResponseBuilder append(byte[] body) {
+		return this.append(body, HttpStatus.OK);
+	}
+
+	public ResponseBuilder append(byte[] body, HttpStatus status) {
+		return this.setBody(body, status);
 	}
 
 	public ResponseBuilder append(Object body) {
@@ -52,20 +56,7 @@ public class ResponseBuilder {
 	}
 
 	public ResponseBuilder append(Object body, HttpStatus status) {
-		this.body = body;
-		this.status = status;
-		this.hasChanges = true;
-		return this;
-	}
-
-	public ResponseBuilder setStatus(HttpStatus status) {
-		this.status = status;
-		return this;
-	}
-
-	public ResponseBuilder setStatus(int code) {
-		this.status = HttpStatus.forCode(code);
-		return this;
+		return this.setBody(body, status);
 	}
 
 	public ResponseBuilder flush() {
@@ -88,6 +79,10 @@ public class ResponseBuilder {
 				} else if (this.body != null) {
 					this.bytes = gson.toJson(this.body).getBytes(charset);
 					return this;
+				} else {
+					this.status = HttpStatus.INTERNAL_ERROR;
+					this.body = new BadResponse(this.status.getCode(), null, "No response data");
+					this.bytes = gson.toJson(this.body).getBytes(charset);
 				}
 			}
 
@@ -107,10 +102,6 @@ public class ResponseBuilder {
 
 				return this;
 			}
-
-			this.status = HttpStatus.INTERNAL_ERROR;
-			this.body = new BadResponse(this.status.getCode(), null, "No response data");
-			this.bytes = gson.toJson(this.body).getBytes(charset);
 		}
 
 		return this;
@@ -118,6 +109,66 @@ public class ResponseBuilder {
 
 	public byte[] toBytes() {
 		return this.commit().bytes;
+	}
+
+	public ResponseBuilder setStatus(HttpStatus status) {
+		this.status = status;
+		this.hasChanges = true;
+		return this;
+	}
+
+	public ResponseBuilder setStatus(int code) {
+		this.status = HttpStatus.forCode(code);
+		this.hasChanges = true;
+		return this;
+	}
+
+	public ResponseBuilder setError(HttpException error) {
+		this.status = error.getStatus();
+		this.error = error;
+
+		this.hasChanges = true;
+
+		return this;
+	}
+
+	public ResponseBuilder setError(Throwable error) {
+		this.status = HttpStatus.INTERNAL_ERROR;
+		this.error = new HttpException(this.status, error, error.getMessage());
+
+		this.hasChanges = true;
+
+		return this;
+	}
+
+	public ResponseBuilder setBody(Object bytes) {
+		return this.setBody(body, HttpStatus.OK);
+	}
+
+	public ResponseBuilder setBody(Object body, HttpStatus status) {
+		this.hasChanges = true;
+
+		this.status = status;
+		this.body = body;
+		this.bytes = null;
+		this.error = null;
+
+		return this;
+	}
+
+	public ResponseBuilder setBody(byte[] bytes) {
+		return this.setBody(bytes, HttpStatus.OK);
+	}
+
+	public ResponseBuilder setBody(byte[] bytes, HttpStatus status) {
+		this.hasChanges = true;
+
+		this.status = status;
+		this.bytes = bytes;
+		this.body = null;
+		this.error = null;
+
+		return this;
 	}
 
 	public int getCode() {

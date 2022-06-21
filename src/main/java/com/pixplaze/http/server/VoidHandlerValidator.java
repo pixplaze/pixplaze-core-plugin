@@ -11,7 +11,7 @@ import java.lang.reflect.Method;
  *
  * @since 0.1.1-indev
  */
-public class StrongHandlerValidator implements HandlerValidator {
+public class VoidHandlerValidator implements HandlerValidator {
 
 	private final Class<?> requiredReturnType = Void.TYPE;
 	private final Class<?>[] requiredParameterTypes = new Class[] {HttpExchange.class, QueryParams.class};

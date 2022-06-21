@@ -11,7 +11,7 @@ import java.lang.reflect.Method;
  *
  * @since 0.1.1-indev
  */
-public class SoftHandlerValidator implements HandlerValidator {
+public class AnyHandlerValidator implements HandlerValidator {
 
 	final Class<?>[] requiredParameterTypes = new Class[] {HttpExchange.class, QueryParams.class};
 

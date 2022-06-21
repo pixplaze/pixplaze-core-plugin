@@ -19,8 +19,8 @@ import static com.pixplaze.util.Types.stringifyTypes;
  * При неправильных аргументах или возвращаемом типе метода-обработчика,
  * выбрасывает исключение, при этом, контекст не создаётся.
  *
- * @see SoftHandlerValidator
- * @see StrongHandlerValidator
+ * @see AnyHandlerValidator
+ * @see VoidHandlerValidator
  *
  * @since 0.1.1-indev
  */
