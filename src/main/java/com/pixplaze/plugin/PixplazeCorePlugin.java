@@ -9,20 +9,20 @@ import com.pixplaze.http.rcon.ConsoleBuffer;
 import com.pixplaze.util.Optional;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public final class PixplazeRootsAPI extends JavaPlugin {
+public final class PixplazeCorePlugin extends JavaPlugin {
 
-    private static PixplazeRootsAPI instance;
+    private static PixplazeCorePlugin instance;
 
     private ConsoleBuffer consoleBuffer;
     private PixplazeHttpServer rconServer;
 
-    public PixplazeRootsAPI() {
+    public PixplazeCorePlugin() {
         if (instance == null) {
             instance = this;
         }
     }
 
-    public static PixplazeRootsAPI getInstance() {
+    public static PixplazeCorePlugin getInstance() {
         return instance;
     }
 

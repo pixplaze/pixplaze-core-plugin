@@ -5,11 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.pixplaze</groupId>
-    <artifactId>PixplazeRootsAPI</artifactId>
+    <artifactId>PixplazeCorePlugin</artifactId>
     <version>v0.1.0-indev</version>
     <packaging>jar</packaging>
 
-    <name>PixplazeRootsAPI</name>
+    <name>PixplazeCorePlugin</name>
 
     <properties>
         <java.version>17</java.version>
@@ -46,18 +46,13 @@
 
     <repositories>
         <repository>
-            <id>spigotmc-repo</id>
-            <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+            <id>papermc</id>
+            <url>https://repo.papermc.io/repository/maven-public/</url>
         </repository>
     </repositories>
 
     <dependencies>
-<!--        <dependency>-->
-<!--            <groupId>org.bukkit</groupId>-->
-<!--            <artifactId>bukkit</artifactId>-->
-<!--            <version>1.15.2-R0.1-SNAPSHOT</version>-->
-<!--            <scope>provided</scope>-->
-<!--        </dependency>-->
+
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>

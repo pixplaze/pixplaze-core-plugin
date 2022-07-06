@@ -7,7 +7,7 @@ import com.google.gson.JsonObject;
 import com.pixplaze.http.annotations.GetHandler;
 import com.pixplaze.http.annotations.PostHandler;
 import com.pixplaze.http.server.QueryParams;
-import com.pixplaze.plugin.PixplazeRootsAPI;
+import com.pixplaze.plugin.PixplazeCorePlugin;
 import com.pixplaze.util.Utils;
 
 import com.sun.net.httpserver.HttpExchange;
@@ -24,11 +24,11 @@ import java.util.logging.Logger;
 
 public class RconHttpController implements HttpController {
 
-	private final PixplazeRootsAPI plugin;
+	private final PixplazeCorePlugin plugin;
 	private final Logger logger;
 	private final Gson gson = new Gson();
 
-	public RconHttpController(PixplazeRootsAPI plugin, Logger logger) {
+	public RconHttpController(PixplazeCorePlugin plugin, Logger logger) {
 		this.plugin = plugin;
 		this.logger = logger;
 	}
@@ -64,7 +64,7 @@ public class RconHttpController implements HttpController {
 			count = params.getAsInt("count");
 		}
 
-		var lines = PixplazeRootsAPI.getInstance().getConsoleBuffer().getHistory(count);
+		var lines = PixplazeCorePlugin.getInstance().getConsoleBuffer().getHistory(count);
 
 		// Попытка отправки результата запроса
 		try {

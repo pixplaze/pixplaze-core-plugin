@@ -1,6 +1,6 @@
 name: PixplazeRootsAPI
 version: '${project.version}'
-main: com.pixplaze.plugin.PixplazeRootsAPI
-api-version: 1.15
+main: com.pixplaze.plugin.PixplazeCorePlugin
+api-version: 1.18
 authors: [ pazik98 ]
 load: STARTUP

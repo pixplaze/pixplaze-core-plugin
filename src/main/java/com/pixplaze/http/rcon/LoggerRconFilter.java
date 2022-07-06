@@ -1,6 +1,6 @@
 package com.pixplaze.http.rcon;
 
-import com.pixplaze.plugin.PixplazeRootsAPI;
+import com.pixplaze.plugin.PixplazeCorePlugin;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.core.LogEvent;
@@ -9,7 +9,7 @@ import org.apache.logging.log4j.core.filter.AbstractFilter;
 import org.apache.logging.log4j.message.Message;
 
 public class LoggerRconFilter extends AbstractFilter {
-    private static final ConsoleBuffer consoleBuffer = PixplazeRootsAPI.getInstance().getConsoleBuffer();
+    private static final ConsoleBuffer consoleBuffer = PixplazeCorePlugin.getInstance().getConsoleBuffer();
 
     @Override
     public Result filter(LogEvent event) {

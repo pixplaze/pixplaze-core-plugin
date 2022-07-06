@@ -5,7 +5,7 @@ import com.pixplaze.exceptions.InvalidAddressException;
 import com.pixplaze.exceptions.CannotDefineAddressException;
 import com.pixplaze.http.HttpController;
 import com.pixplaze.http.exceptions.BadMethodException;
-import com.pixplaze.plugin.PixplazeRootsAPI;
+import com.pixplaze.plugin.PixplazeCorePlugin;
 import com.pixplaze.util.Inet;
 
 import com.sun.net.httpserver.HttpExchange;
@@ -38,7 +38,7 @@ import static com.pixplaze.http.HttpStatus.BAD_METHOD;
  */
 public final class PixplazeHttpServer {
 
-    public Logger logger = PixplazeRootsAPI.getInstance().getLogger();
+    public Logger logger = PixplazeCorePlugin.getInstance().getLogger();
     private final HttpServer httpServer;
     private final String address;
     private final int port;
