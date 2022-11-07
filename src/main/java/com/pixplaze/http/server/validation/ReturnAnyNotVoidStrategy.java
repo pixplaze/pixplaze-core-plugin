@@ -1,23 +1,24 @@
-package com.pixplaze.http.server;
+package com.pixplaze.http.server.validation;
 
+import com.pixplaze.http.server.QueryParams;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.lang.reflect.Method;
 
 /**
- * Возвращаемый тип - {@code void};
+ * Возвращаемый тип - любой, кроме {@code void};
  * Порядок аргументов метода-обработчика имеет значение;
  * Рекомендуемые аргументы обработчика: {@link HttpExchange}, {@link QueryParams}.
  *
  * @since 0.1.1-indev
  */
-public class VoidHandlerValidator implements HandlerValidator {
+public class ReturnAnyNotVoidStrategy implements HandlerValidationStrategy {
 
-	private final Class<?> requiredReturnType = Void.TYPE;
-	private final Class<?>[] requiredParameterTypes = new Class[] {HttpExchange.class, QueryParams.class};
+	final Class<?>[] requiredParameterTypes = new Class[] {HttpExchange.class, QueryParams.class};
 
 	@Override
 	public boolean isParameterTypesValid(Method method) {
+		// TODO: Метод идентичен ReturnVoidStrategy#isParameterTypesValid(), исправить
 		var methodTypes = method.getParameterTypes();
 		var isAllValid = true;
 		try {
@@ -35,7 +36,7 @@ public class VoidHandlerValidator implements HandlerValidator {
 
 	@Override
 	public boolean isReturnTypeValid(Method method) {
-		return method.getReturnType().isAssignableFrom(requiredReturnType);
+		return !method.getReturnType().isAssignableFrom(Void.TYPE);
 	}
 
 	@Override
@@ -45,6 +46,6 @@ public class VoidHandlerValidator implements HandlerValidator {
 
 	@Override
 	public Class<?> getRequiredReturnType() {
-		return requiredReturnType;
+		return null;
 	}
 }

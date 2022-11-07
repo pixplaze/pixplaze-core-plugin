@@ -53,7 +53,7 @@ public final class PixplazeCorePlugin extends JavaPlugin {
         consoleBuffer.attachLogger();
     }
 
-    /**
+    /**<pre>
      * Создаёт и инициализирует HTTP-сервер по адресу и порту из {@code config.yml}.
      *
      * В случае, если в конфигурационном файле не указан {@code http-listen-ip},
@@ -64,6 +64,7 @@ public final class PixplazeCorePlugin extends JavaPlugin {
      * на {@code 127.0.0.1}.
      *
      * Если создать HTTP-сервер по прежнуму не удаётся, печатает сообщение об ошибке.
+     * </pre>
      */
     private void initRconHttpServer() {
         var address = getConfig().getString("http-listen-ip");

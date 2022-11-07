@@ -1,5 +1,6 @@
-package com.pixplaze.http.server;
+package com.pixplaze.http.server.validation;
 
+import com.pixplaze.http.server.QueryParams;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.lang.reflect.Method;
@@ -11,13 +12,13 @@ import java.lang.reflect.Method;
  *
  * @since 0.1.1-indev
  */
-public class AnyHandlerValidator implements HandlerValidator {
+public class ReturnAnyStrategy implements HandlerValidationStrategy {
 
 	final Class<?>[] requiredParameterTypes = new Class[] {HttpExchange.class, QueryParams.class};
 
 	@Override
 	public boolean isParameterTypesValid(Method method) {
-		return HandlerValidator.getMissedRequiredParams(method, requiredParameterTypes).length == 0;
+		return HandlerValidationStrategy.getMissedRequiredParams(method, requiredParameterTypes).length == 0;
 	}
 
 	@Override

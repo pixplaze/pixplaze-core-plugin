@@ -1,4 +1,4 @@
-package com.pixplaze.http.server;
+package com.pixplaze.http.server.validation;
 
 import com.pixplaze.http.exceptions.InvalidRequestHandler;
 
@@ -19,12 +19,12 @@ import static com.pixplaze.util.Types.stringifyTypes;
  * При неправильных аргументах или возвращаемом типе метода-обработчика,
  * выбрасывает исключение, при этом, контекст не создаётся.
  *
- * @see AnyHandlerValidator
- * @see VoidHandlerValidator
+ * @see ReturnAnyStrategy
+ * @see ReturnVoidStrategy
  *
  * @since 0.1.1-indev
  */
-public interface HandlerValidator {
+public interface HandlerValidationStrategy {
 	/**
 	 * Общая валидация обработчика {@code method}.
 	 * По умолчанию проверяет корректность аргументов метода

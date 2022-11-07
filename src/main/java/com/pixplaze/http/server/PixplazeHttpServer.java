@@ -8,6 +8,8 @@ import com.pixplaze.http.HttpController;
 import com.pixplaze.http.HttpStatus;
 import com.pixplaze.http.exceptions.BadMethodException;
 import com.pixplaze.http.exceptions.HttpException;
+import com.pixplaze.http.server.validation.HandlerValidationStrategy;
+import com.pixplaze.http.server.validation.ReturnAnyStrategy;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import com.pixplaze.util.Inet;
 import com.pixplaze.util.Optional;
@@ -47,10 +49,6 @@ public final class PixplazeHttpServer {
     private final String address;
     private final int port;
 
-    public PixplazeHttpServer(final int port) throws CannotDefineAddressException, HttpServerException {
-        this("auto", port);
-    }
-
     public PixplazeHttpServer(String address, final int port) throws
 		    InvalidAddressException,
 		    CannotDefineAddressException,
@@ -77,12 +75,16 @@ public final class PixplazeHttpServer {
     /**
      * Метод, позволяющий привязать объект контроллера к HTTP-серверу.
      * Иными словами, метод монтирует контроллер к HTTP-серверу.
+     * <br><br>
+     * Если указать параметр {@code validationStrategy}, - метод проверит корректность
+     * переданного {@code controller} в соответствии c указанной {@code validationStrategy}.
+     * Если не передавать {@code validationStrategy}, будет использована ReturnAnyStrategy
+     * (по умолчанию).
      *
      * @param controller объект контроллера, который должен быть привязан к HTTP-серверу.
      */
-    public void mount(HttpController controller) {
-        var allMethods = controller.getClass().getMethods();
-        var contextMapper = new ContextMapper(allMethods);
+    public void mount(HttpController controller, HandlerValidationStrategy validationStrategy) {
+        var contextMapper = new ContextMapper(controller, validationStrategy);
 
         contextMapper.getContextMapping().forEach((context, mapping) -> httpServer.createContext(context, exchange -> {
             var method = exchange.getRequestMethod();
@@ -103,6 +105,14 @@ public final class PixplazeHttpServer {
             });
             logger.warning("");
         });
+    }
+
+    /**
+     * @see PixplazeHttpServer#mount(HttpController, HandlerValidationStrategy)
+     * @param controller объект контроллера, который должен быть привязан к HTTP-серверу.
+     */
+    public void mount(HttpController controller) {
+        this.mount(controller, new ReturnAnyStrategy());
     }
 
     // TODO: Упростить код, уменьшить количество параметров
