@@ -1,12 +1,14 @@
 package com.pixplaze.http.exceptions;
 
-public class BadMethodException extends Exception {
+import com.pixplaze.http.HttpStatus;
+
+public class BadMethodException extends HttpException {
 	public BadMethodException() {
 		this("Method is not defined!");
 	}
 
 	public BadMethodException(String message) {
-		super(message);
+		super(HttpStatus.BAD_METHOD, null, message);
 	}
 
 	public BadMethodException(String method, String context) {

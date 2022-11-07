@@ -1,16 +1,18 @@
 package com.pixplaze.http.server;
 
 import com.pixplaze.http.annotations.*;
+import com.pixplaze.http.exceptions.InvalidRequestHandler;
 
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class ContextMapper {
 	private final Map<String, HashMap<String, Method>> pathMapping;
+	private final HandlerValidator validator = new AnyNotVoidHandlerValidator(); // TODO: Изменить обранто
 
-	protected ContextMapper() {
+	protected ContextMapper(Method[] methods) {
 		pathMapping = new HashMap<>();
+		scanHandlers(methods);
 	}
 
 	protected void mapContext(String path, String method, Method handler) {
@@ -28,26 +30,29 @@ public class ContextMapper {
 		return this.pathMapping;
 	}
 
-	protected static ContextMapper scanHandlers(Method[] methods) {
-		var contextMapper = new ContextMapper();
+	private void scanHandlers(Method[] methods) throws InvalidRequestHandler {
 		for (var method: methods) {
 			if (method.isAnnotationPresent(RequestHandler.class)) {
+				validator.validate(method);
 				var annotation = method.getAnnotation(RequestHandler.class);
-				contextMapper.mapContext(annotation.path(), annotation.method(), method);
+				mapContext(annotation.path(), annotation.method(), method);
 			} else if (method.isAnnotationPresent(GetHandler.class)) {
+				validator.validate(method);
 				var annotation = method.getAnnotation(GetHandler.class);
-				contextMapper.mapContext(annotation.value(), annotation.method(), method);
+				mapContext(annotation.value(), annotation.method(), method);
 			} else if (method.isAnnotationPresent(PostHandler.class)) {
+				validator.validate(method);
 				var annotation = method.getAnnotation(PostHandler.class);
-				contextMapper.mapContext(annotation.value(), annotation.method(), method);
+				mapContext(annotation.value(), annotation.method(), method);
 			} else if (method.isAnnotationPresent(PutHandler.class)) {
+				validator.validate(method);
 				var annotation = method.getAnnotation(PutHandler.class);
-				contextMapper.mapContext(annotation.value(), annotation.method(), method);
+				mapContext(annotation.value(), annotation.method(), method);
 			} else if (method.isAnnotationPresent(DeleteHandler.class)) {
+				validator.validate(method);
 				var annotation = method.getAnnotation(DeleteHandler.class);
-				contextMapper.mapContext(annotation.value(), annotation.method(), method);
+				mapContext(annotation.value(), annotation.method(), method);
 			}
 		}
-		return contextMapper;
 	}
 }

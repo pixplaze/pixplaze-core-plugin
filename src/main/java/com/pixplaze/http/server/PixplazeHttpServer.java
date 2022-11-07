@@ -1,13 +1,16 @@
 package com.pixplaze.http.server;
 
+import com.google.gson.Gson;
 import com.pixplaze.exceptions.HttpServerException;
 import com.pixplaze.exceptions.InvalidAddressException;
 import com.pixplaze.exceptions.CannotDefineAddressException;
 import com.pixplaze.http.HttpController;
+import com.pixplaze.http.HttpStatus;
 import com.pixplaze.http.exceptions.BadMethodException;
+import com.pixplaze.http.exceptions.HttpException;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import com.pixplaze.util.Inet;
-
+import com.pixplaze.util.Optional;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
@@ -15,6 +18,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.*;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -78,28 +82,13 @@ public final class PixplazeHttpServer {
      */
     public void mount(HttpController controller) {
         var allMethods = controller.getClass().getMethods();
-        var contextMapper = ContextMapper.scanHandlers(allMethods);
+        var contextMapper = new ContextMapper(allMethods);
 
         contextMapper.getContextMapping().forEach((context, mapping) -> httpServer.createContext(context, exchange -> {
             var method = exchange.getRequestMethod();
             var params = new QueryParams(exchange.getRequestURI().getQuery());
             controller.beforeEach(exchange);
-            try {
-                this.observe(controller, context, method, mapping, exchange, params);
-            } catch (IllegalArgumentException e) {
-                // TODO: Реализлвать исключение
-                logger.warning(
-                        "Illegal handler arguments! Expected: %s, %s!"
-                        .formatted(HttpExchange.class.getSimpleName(), QueryParams.class.getSimpleName())
-                );
-            } catch (BadMethodException e) {
-                var message = e.getMessage().getBytes(StandardCharsets.UTF_8);
-                exchange.sendResponseHeaders(BAD_METHOD.getCode(), message.length);
-                exchange.getResponseBody().write(message);
-                exchange.getResponseBody().flush();
-            } catch (Throwable e) {
-                logger.warning("Error occurred: %s\tMessage: %s".formatted(e.getClass().getSimpleName(), e.getMessage()));
-            }
+            this.handle(controller, context, method, mapping, exchange, params);
             exchange.close();
         }));
 
@@ -117,21 +106,45 @@ public final class PixplazeHttpServer {
     }
 
     // TODO: Упростить код, уменьшить количество параметров
-    private void observe(HttpController controller,
-                         String context,
-                         String method,
-                         Map<String, Method> mapping,
-                         HttpExchange exchange,
-                         QueryParams params) throws InvocationTargetException,
-                                                    IllegalAccessException,
-                                                    BadMethodException {
-        var handler = mapping.get(method);
-        if (handler != null) {
-            handler.invoke(controller, exchange, params);
-        } else {
-            throw new BadMethodException(method, context);
+    private void handle(HttpController controller,
+                        String context,
+                        String method,
+                        Map<String, Method> mapping,
+                        HttpExchange exchange,
+                        QueryParams params) throws BadMethodException
+    {
+        var rb = new ResponseBuilder();
+        try {
+            var handler = mapping.get(method);
+            if (handler != null) {
+                var result = handler.invoke(controller, exchange, params);
+                Optional.runNotNull(result, rb::append); // TODO: fix empty response
+            } else {
+                throw new BadMethodException(method, context);
+            }
+        } catch (HttpException e) {
+            rb.append(e);
+            logger.warning(e.getMessage());
+        } catch (InvocationTargetException e) {
+            rb.append(e.getCause());
+            logger.warning(e.getCause().getMessage());
+        } catch (Throwable e) {
+            rb.append(e);
+            logger.warning(e.getMessage());
         }
+        makeResponse(exchange, rb);
+    }
 
+    private void makeResponse(HttpExchange exchange, ResponseBuilder builder) {
+        try {
+            exchange.sendResponseHeaders(builder.getCode(), builder.getLength());
+            exchange.getResponseBody().write(builder.toBytes());
+        } catch (IOException e) {
+            throw new RuntimeException(
+                    "Can not serve %s %s request"
+                    .formatted(exchange.getRequestMethod(), exchange.getRequestURI())
+            );
+        }
     }
 
     public void start() {

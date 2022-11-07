@@ -62,10 +62,26 @@ public enum HttpStatus {
 		return message;
 	}
 
-	public HttpStatus forCode(final int code) {
+	public boolean isSuccessful() {
+		return this.code / 100 == 2;
+	}
+
+	public boolean isRedirected() {
+		return this.code / 100 == 3;
+	}
+
+	public boolean isClientError() {
+		return this.code / 100 == 4;
+	}
+
+	public boolean isServerError() {
+		return this.code / 100 == 5;
+	}
+
+	public static HttpStatus forCode(final int code) {
 		for (var status: HttpStatus.values()) {
 			if (status.code == code) return status;
 		}
-		return null;
+		throw new IllegalArgumentException("No status defined for code %d".formatted(code));
 	}
 }
