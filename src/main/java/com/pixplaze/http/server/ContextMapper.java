@@ -51,11 +51,7 @@ public class ContextMapper {
 
 	private void scanHandlers(Method[] methods) throws InvalidRequestHandler {
 		for (var method: methods) {
-			if (method.isAnnotationPresent(RequestHandler.class)) {
-				validationStrategy.validate(method);
-				var annotation = method.getAnnotation(RequestHandler.class);
-				mapContext(annotation.path(), annotation.method(), method);
-			} else if (method.isAnnotationPresent(GetHandler.class)) {
+			if (method.isAnnotationPresent(GetHandler.class)) {
 				validationStrategy.validate(method);
 				var annotation = method.getAnnotation(GetHandler.class);
 				mapContext(annotation.value(), annotation.method(), method);
