@@ -1,31 +1,27 @@
 package com.pixplaze.http.server;
 
-import com.google.gson.Gson;
 import com.pixplaze.exceptions.HttpServerException;
 import com.pixplaze.exceptions.InvalidAddressException;
 import com.pixplaze.exceptions.CannotDefineAddressException;
 import com.pixplaze.http.HttpController;
-import com.pixplaze.http.HttpStatus;
 import com.pixplaze.http.exceptions.BadMethodException;
 import com.pixplaze.http.exceptions.HttpException;
 import com.pixplaze.http.server.validation.HandlerValidationStrategy;
 import com.pixplaze.http.server.validation.ReturnAnyStrategy;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import com.pixplaze.util.Inet;
-import com.pixplaze.util.Optional;
+//import com.pixplaze.util.Optional;
 import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.*;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Logger;
-
-import static com.pixplaze.http.HttpStatus.BAD_METHOD;
 
 /**
  * Простой HTTP-сервер, позволяющий обрабатывать запросы посредством контроллера.
@@ -86,25 +82,57 @@ public final class PixplazeHttpServer {
     public void mount(HttpController controller, HandlerValidationStrategy validationStrategy) {
         var contextMapper = new ContextMapper(controller, validationStrategy);
 
-        contextMapper.getContextMapping().forEach((context, mapping) -> httpServer.createContext(context, exchange -> {
-            var method = exchange.getRequestMethod();
-            var params = new QueryParams(exchange.getRequestURI().getQuery());
-            controller.beforeEach(exchange);
-            this.handle(controller, context, method, mapping, exchange, params);
-            exchange.close();
-        }));
+        contextMapper.getContextMapping().forEach((context, mapping) -> httpServer.createContext(
+                context, new PixplazeHttpHandler(this.logger, context, mapping, controller))
+        );
 
-        var contexts = contextMapper.getContextMapping();
-        var contextsCount = contexts.size();
-        logger.warning("Count of contexts: %s".formatted(contextsCount));
-        contexts.forEach((path, mapping) -> {
-            logger.warning("Context path: %s".formatted(path));
-            mapping.forEach((restMethods, method) -> {
-                logger.warning("\tContext method: %s".formatted(restMethods));
-                logger.warning("\tContext handler: %s".formatted(method.getName()));
-            });
-            logger.warning("");
-        });
+        this.logger.warning("HTTP contexts mapping:\n" + contextMapper);
+    }
+
+    class PixplazeHttpHandler implements HttpHandler {
+        private final Logger logger;
+        private final String context;
+        private final Map<String, Method> mapping;
+        private final HttpController controller;
+
+        public PixplazeHttpHandler(Logger logger, String context, Map<String, Method> mapping, HttpController controller) {
+            this.logger = logger;
+            this.context = context;
+            this.mapping = mapping;
+            this.controller = controller;
+        }
+
+        @Override
+        public void handle(HttpExchange exchange) {
+            var rb = new ResponseBuilder();
+            try {
+                var method = exchange.getRequestMethod();
+//                this.logger.warning("exchange.getRequestURI().getQuery() = [%s]".formatted(exchange.getRequestURI().getQuery()));
+//                this.logger.warning("attr: " + exchange.getAttribute("access-token").toString());
+//                this.logger.warning("After attr print");
+                var params = new QueryParams(exchange.getRequestURI().getQuery());
+                controller.beforeEach(exchange);
+
+                var handler = mapping.get(method);
+                if (handler != null) {
+                    var result = handler.invoke(controller, exchange, params);
+                    Optional.ofNullable(result).ifPresent(rb::append);
+                } else {
+                    throw new BadMethodException(method, context);
+                }
+            } catch (HttpException e) {
+                rb.append(e);
+                logger.warning(e.getMessage());
+            } catch (InvocationTargetException e) {
+                rb.append(e.getCause());
+                logger.warning(e.getCause().getMessage());
+            } catch (Throwable e) {
+                rb.append(e);
+                logger.warning(e.getMessage());
+            }
+            makeResponse(exchange, rb);
+            exchange.close();
+        }
     }
 
     /**
@@ -115,37 +143,8 @@ public final class PixplazeHttpServer {
         this.mount(controller, new ReturnAnyStrategy());
     }
 
-    // TODO: Упростить код, уменьшить количество параметров
-    private void handle(HttpController controller,
-                        String context,
-                        String method,
-                        Map<String, Method> mapping,
-                        HttpExchange exchange,
-                        QueryParams params) throws BadMethodException
-    {
-        var rb = new ResponseBuilder();
-        try {
-            var handler = mapping.get(method);
-            if (handler != null) {
-                var result = handler.invoke(controller, exchange, params);
-                Optional.runNotNull(result, rb::append); // TODO: fix empty response
-            } else {
-                throw new BadMethodException(method, context);
-            }
-        } catch (HttpException e) {
-            rb.append(e);
-            logger.warning(e.getMessage());
-        } catch (InvocationTargetException e) {
-            rb.append(e.getCause());
-            logger.warning(e.getCause().getMessage());
-        } catch (Throwable e) {
-            rb.append(e);
-            logger.warning(e.getMessage());
-        }
-        makeResponse(exchange, rb);
-    }
-
     private void makeResponse(HttpExchange exchange, ResponseBuilder builder) {
+        this.logger.warning(builder.getStatus().toString());
         try {
             exchange.sendResponseHeaders(builder.getCode(), builder.getLength());
             exchange.getResponseBody().write(builder.toBytes());

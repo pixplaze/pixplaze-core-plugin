@@ -19,7 +19,6 @@ public class ResponseBuilder {
 	private final Charset charset;
 
 	private boolean hasChanges = true;
-
 	private HttpStatus status;
 	private HttpException error;
 

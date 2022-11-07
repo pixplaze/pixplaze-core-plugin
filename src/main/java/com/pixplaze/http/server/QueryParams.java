@@ -25,7 +25,7 @@ public class QueryParams {
 	}
 
 	public boolean has(String name) {
-		return variables.containsKey(name);
+		return this.isPresent() && this.variables.containsKey(name);
 	}
 
 	public String getAsString(String key) {
