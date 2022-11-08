@@ -1,11 +1,14 @@
-package com.pixplaze.http;
+package com.pixplaze.controllers;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
+import com.pixplaze.http.HttpController;
+import com.pixplaze.http.HttpStatus;
 import com.pixplaze.http.annotations.GetHandler;
 import com.pixplaze.http.annotations.PostHandler;
+import com.pixplaze.http.exceptions.HttpException;
 import com.pixplaze.http.server.QueryParams;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import com.pixplaze.util.Utils;
@@ -56,8 +59,9 @@ public class RconHttpController implements HttpController {
 		if (!params.has("count")) {
 			count = MAX_LINES_COUNT;
 		} else if (!NumberUtils.isNumber(params.getAsString("count"))) {
-			rb.setError("InvalidCountError").setMessage("Parameter count must be number!");
-			sendResponse(exchange, HttpStatus.BAD_REQUEST.getCode(), rb.getFinal());
+			throw new HttpException(HttpStatus.BAD_REQUEST, null);
+//			rb.setError("InvalidCountError").setMessage("Parameter count must be number!");
+//			sendResponse(exchange, HttpStatus.BAD_REQUEST.getCode(), rb.getFinal());
 		} else if (params.getAsInt("count") == 0) {
 			count = MAX_LINES_COUNT;
 		} else {

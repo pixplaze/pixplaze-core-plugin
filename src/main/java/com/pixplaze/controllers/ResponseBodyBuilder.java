@@ -1,4 +1,4 @@
-package com.pixplaze.http;
+package com.pixplaze.controllers;
 
 import com.google.gson.JsonObject;
 

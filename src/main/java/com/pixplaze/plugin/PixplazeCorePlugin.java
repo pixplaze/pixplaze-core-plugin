@@ -3,7 +3,7 @@ package com.pixplaze.plugin;
 import com.pixplaze.exceptions.HttpServerException;
 import com.pixplaze.exceptions.InvalidAddressException;
 import com.pixplaze.exceptions.CannotDefineAddressException;
-import com.pixplaze.http.RconHttpController;
+import com.pixplaze.controllers.RconHttpController;
 import com.pixplaze.http.server.PixplazeHttpServer;
 import com.pixplaze.http.rcon.ConsoleBuffer;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -91,7 +91,7 @@ public final class PixplazeCorePlugin extends JavaPlugin {
             rcon.start();
             this.getLogger().info(
                     "Starting PixplazeCore on: %s:%d"
-                     .formatted(rcon.getAddress(), rcon.getPort())
+                    .formatted(rcon.getAddress(), rcon.getPort())
             );
         });
     }
