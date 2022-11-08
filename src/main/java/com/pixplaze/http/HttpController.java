@@ -7,7 +7,7 @@ import com.pixplaze.http.server.QueryParams;
 
 /**
  * Интерфейс, описывающий контроллер запросов.
- *
+ * <br><br>
  * Контроллер запросов - обёртка над {@link HttpHandler}, позволяющая
  * разделить обработку запросов по разным методам,
  * аннотированным {@link GetHandler}, {@link PostHandler}, {@link PutHandler}

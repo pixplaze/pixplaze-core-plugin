@@ -107,13 +107,11 @@ public final class PixplazeHttpServer {
             var rb = new ResponseBuilder();
             try {
                 var method = exchange.getRequestMethod();
-//                this.logger.warning("exchange.getRequestURI().getQuery() = [%s]".formatted(exchange.getRequestURI().getQuery()));
-//                this.logger.warning("attr: " + exchange.getAttribute("access-token").toString());
-//                this.logger.warning("After attr print");
                 var params = new QueryParams(exchange.getRequestURI().getQuery());
+                var handler = mapping.get(method);
+
                 controller.beforeEach(exchange);
 
-                var handler = mapping.get(method);
                 if (handler != null) {
                     var result = handler.invoke(controller, exchange, params);
                     Optional.ofNullable(result).ifPresent(rb::append);

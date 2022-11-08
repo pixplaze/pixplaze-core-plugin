@@ -3,6 +3,7 @@ package com.pixplaze.util;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+@Deprecated(since = "0.1.3-indev", forRemoval = true)
 public class Optional {
 
     /**

@@ -1,6 +1,5 @@
 package com.pixplaze.http.server;
 
-import com.pixplaze.exceptions.HttpServerException;
 import com.pixplaze.http.HttpController;
 import com.pixplaze.http.annotations.*;
 import com.pixplaze.http.exceptions.InvalidRequestHandler;
@@ -24,10 +23,10 @@ public class ContextMapper {
 
 	private void mapContext(String path, String method, Method handler) {
 		if (path == null || path.isBlank()) {
-//			throw new HttpServerException(
-//					"Mapping path is null or blank for method %s!"
-//					.formatted(handler.getName())
-//			);
+			throw new InvalidRequestHandler(
+					"Mapping path is null or blank for method %s#%s(...)!"
+					.formatted(handler.getDeclaringClass().getName(), handler.getName())
+			);
 		}
 
 		// TODO: сделать проверки на наличие path, method, handler

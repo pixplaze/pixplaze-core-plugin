@@ -6,8 +6,9 @@ import com.pixplaze.exceptions.CannotDefineAddressException;
 import com.pixplaze.http.RconHttpController;
 import com.pixplaze.http.server.PixplazeHttpServer;
 import com.pixplaze.http.rcon.ConsoleBuffer;
-import com.pixplaze.util.Optional;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.Optional;
 
 public final class PixplazeCorePlugin extends JavaPlugin {
 
@@ -41,7 +42,8 @@ public final class PixplazeCorePlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        Optional.runNotNull(getRconHttpServer(), PixplazeHttpServer::stop);
+        Optional.ofNullable(getRconHttpServer())
+                .ifPresent(PixplazeHttpServer::stop);
     }
 
     public ConsoleBuffer getConsoleBuffer() {
@@ -76,18 +78,21 @@ public final class PixplazeCorePlugin extends JavaPlugin {
                 tryAgain = false;
             } catch (InvalidAddressException e) {
                 address = "auto";
-                getLogger().warning(e.getMessage());
+                this.getLogger().warning(e.getMessage());
             } catch (CannotDefineAddressException e) {
                 address = "127.0.0.1";
-                getLogger().warning(e.getMessage());
+                this.getLogger().warning(e.getMessage());
             } catch (HttpServerException e) {
                 tryAgain = false;
-                getLogger().warning(e.getMessage());
+                this.getLogger().warning(e.getMessage());
             }
         }
-        Optional.runNotNull(getRconHttpServer(), rcon -> {
+        Optional.ofNullable(getRconHttpServer()).ifPresent(rcon -> {
             rcon.start();
-            getLogger().info("Starting PixplazeCore on: %s:%d".formatted(rcon.getAddress(), rcon.getPort()));
+            this.getLogger().info(
+                    "Starting PixplazeCore on: %s:%d"
+                     .formatted(rcon.getAddress(), rcon.getPort())
+            );
         });
     }
 
