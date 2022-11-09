@@ -6,18 +6,18 @@ import java.util.*;
 
 public class QueryParams {
 
-	private final Map<String, String> variables;
+	private final Map<String, String> values;
 
 	protected QueryParams(String query) {
-		this.variables = parse(query);
+		this.values = parse(query);
 	}
 
-	protected QueryParams(Map<String, String> variables) {
-		this.variables = variables;
+	protected QueryParams(Map<String, String> values) {
+		this.values = values;
 	}
 
 	public boolean isEmpty() {
-		return variables == null || variables.isEmpty();
+		return values == null || values.isEmpty();
 	}
 
 	public boolean isPresent() {
@@ -25,15 +25,7 @@ public class QueryParams {
 	}
 
 	public boolean has(String name) {
-		return this.isPresent() && this.variables.containsKey(name);
-	}
-
-	public String getAsString(String key) {
-		return variables.get(key);
-	}
-
-	public int getAsInt(String key) {
-		return Integer.parseInt(variables.get(key));
+		return this.isPresent() && this.values.containsKey(name);
 	}
 
 // TODO: изменить API извлечения параметра запроса на похожее:
@@ -49,16 +41,29 @@ public class QueryParams {
 //		return result;
 //	}
 
+	@Deprecated(since = "0.1.3-indev", forRemoval = true)
+	public String getAsString(String key) {
+		return values.get(key);
+	}
+
+	@Deprecated(since = "0.1.3-indev", forRemoval = true)
+	public int getAsInt(String key) {
+		return Integer.parseInt(values.get(key));
+	}
+
+	@Deprecated(since = "0.1.3-indev", forRemoval = true)
 	public double getAsDouble(String key) {
-		return Double.parseDouble(variables.get(key));
+		return Double.parseDouble(values.get(key));
 	}
 
+	@Deprecated(since = "0.1.3-indev", forRemoval = true)
 	public float getAsFloat(String key) {
-		return Float.parseFloat(variables.get(key));
+		return Float.parseFloat(values.get(key));
 	}
 
+	@Deprecated(since = "0.1.3-indev", forRemoval = true)
 	public boolean getAsBoolean(String key) {
-		return Boolean.parseBoolean(variables.get(key));
+		return Boolean.parseBoolean(values.get(key));
 	}
 
 	public static Map<String, String> parse(String query) throws QueryParseException {

@@ -1,11 +1,12 @@
 package com.pixplaze.plugin;
 
+import com.pixplaze.controllers.TestHttpController;
 import com.pixplaze.exceptions.HttpServerException;
 import com.pixplaze.exceptions.InvalidAddressException;
 import com.pixplaze.exceptions.CannotDefineAddressException;
 import com.pixplaze.controllers.RconHttpController;
 import com.pixplaze.http.server.PixplazeHttpServer;
-import com.pixplaze.http.rcon.ConsoleBuffer;
+import com.pixplaze.rcon.ConsoleBuffer;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Optional;
@@ -33,6 +34,7 @@ public final class PixplazeCorePlugin extends JavaPlugin {
         initRconHttpServer();
         saveDefaultConfig();
         rconServer.mount(new RconHttpController(this, getLogger()));
+        rconServer.mount(new TestHttpController());
 
         var messages = getServer().getMessenger().getOutgoingChannels();
         for (var message: messages) {

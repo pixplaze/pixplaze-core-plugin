@@ -4,23 +4,15 @@ import com.pixplaze.exceptions.HttpServerException;
 import com.pixplaze.exceptions.InvalidAddressException;
 import com.pixplaze.exceptions.CannotDefineAddressException;
 import com.pixplaze.http.HttpController;
-import com.pixplaze.http.exceptions.BadMethodException;
-import com.pixplaze.http.exceptions.HttpException;
 import com.pixplaze.http.server.validation.HandlerValidationStrategy;
 import com.pixplaze.http.server.validation.ReturnAnyStrategy;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import com.pixplaze.util.Inet;
 //import com.pixplaze.util.Optional;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.*;
-import java.util.Map;
-import java.util.Optional;
 import java.util.logging.Logger;
 
 /**
@@ -50,6 +42,7 @@ public final class PixplazeHttpServer {
 		    CannotDefineAddressException,
 		    HttpServerException
     {
+
         if (address == null || address.isEmpty() || address.equalsIgnoreCase("auto"))
             address = Inet.getLocalAddress();
         else if (!Inet.isIpV4Valid(address))
@@ -89,69 +82,12 @@ public final class PixplazeHttpServer {
         this.logger.warning("HTTP contexts mapping:\n" + contextMapper);
     }
 
-    class PixplazeHttpHandler implements HttpHandler {
-        private final Logger logger;
-        private final String context;
-        private final Map<String, Method> mapping;
-        private final HttpController controller;
-
-        public PixplazeHttpHandler(Logger logger, String context, Map<String, Method> mapping, HttpController controller) {
-            this.logger = logger;
-            this.context = context;
-            this.mapping = mapping;
-            this.controller = controller;
-        }
-
-        @Override
-        public void handle(HttpExchange exchange) {
-            var rb = new ResponseBuilder();
-            try {
-                var method = exchange.getRequestMethod();
-                var params = new QueryParams(exchange.getRequestURI().getQuery());
-                var handler = mapping.get(method);
-
-                controller.beforeEach(exchange);
-
-                if (handler != null) {
-                    var result = handler.invoke(controller, exchange, params);
-                    Optional.ofNullable(result).ifPresent(rb::append);
-                } else {
-                    throw new BadMethodException(method, context);
-                }
-            } catch (HttpException e) {
-                rb.append(e);
-                logger.warning(e.getMessage());
-            } catch (InvocationTargetException e) {
-                rb.append(e.getCause());
-                logger.warning(e.getCause().getMessage());
-            } catch (Throwable e) {
-                rb.append(e);
-                logger.warning(e.getMessage());
-            }
-            makeResponse(exchange, rb);
-            exchange.close();
-        }
-    }
-
     /**
      * @see PixplazeHttpServer#mount(HttpController, HandlerValidationStrategy)
      * @param controller объект контроллера, который должен быть привязан к HTTP-серверу.
      */
     public void mount(HttpController controller) {
         this.mount(controller, new ReturnAnyStrategy());
-    }
-
-    private void makeResponse(HttpExchange exchange, ResponseBuilder builder) {
-        this.logger.warning(builder.getStatus().toString());
-        try {
-            exchange.sendResponseHeaders(builder.getCode(), builder.getLength());
-            exchange.getResponseBody().write(builder.toBytes());
-        } catch (IOException e) {
-            throw new RuntimeException(
-                    "Can not serve %s %s request"
-                    .formatted(exchange.getRequestMethod(), exchange.getRequestURI())
-            );
-        }
     }
 
     public void start() {

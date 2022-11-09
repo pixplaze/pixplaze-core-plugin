@@ -110,6 +110,11 @@ public class ResponseBuilder {
 		return this.commit().bytes;
 	}
 
+	@Override
+	public String toString() {
+		return gson.toJson(this.body);
+	}
+
 	public ResponseBuilder setStatus(HttpStatus status) {
 		this.status = status;
 		this.hasChanges = true;

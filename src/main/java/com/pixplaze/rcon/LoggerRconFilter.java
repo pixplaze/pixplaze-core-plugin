@@ -1,4 +1,4 @@
-package com.pixplaze.http.rcon;
+package com.pixplaze.rcon;
 
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import org.apache.logging.log4j.Level;

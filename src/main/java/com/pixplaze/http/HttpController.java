@@ -1,9 +1,9 @@
 package com.pixplaze.http;
 
+import com.pixplaze.http.server.QueryParams;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.pixplaze.http.annotations.*;
-import com.pixplaze.http.server.QueryParams;
 
 /**
  * Интерфейс, описывающий контроллер запросов.

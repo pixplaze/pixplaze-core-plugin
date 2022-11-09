@@ -1,4 +1,4 @@
-package com.pixplaze.http.rcon;
+package com.pixplaze.rcon;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LoggerContext;

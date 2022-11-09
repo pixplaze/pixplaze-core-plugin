@@ -1,4 +1,4 @@
-package com.pixplaze.http.rcon;
+package com.pixplaze.rcon;
 
 import java.util.LinkedList;
 
