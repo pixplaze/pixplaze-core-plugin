@@ -14,6 +14,10 @@ public class HttpException extends RuntimeException {
 		this(status, cause, status.getMessage());
 	}
 
+	public HttpException(final HttpStatus status, final String message) {
+		super(message, null);
+		this.status = status;
+	}
 	public HttpException(final HttpStatus status, Throwable cause, final String message) {
 		super(message, cause);
 		this.status = status;

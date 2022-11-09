@@ -6,9 +6,15 @@ import com.google.gson.GsonBuilder;
 
 import com.pixplaze.http.HttpStatus;
 import com.pixplaze.http.exceptions.HttpException;
+import com.pixplaze.plugin.PixplazeCorePlugin;
+import org.checkerframework.checker.units.qual.A;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Logger;
 
 
 /**
@@ -22,10 +28,12 @@ public class ResponseBuilder {
 	private HttpStatus status;
 	private HttpException error;
 
+	private final Logger logger = PixplazeCorePlugin.getInstance().getLogger();
+
 	private Object body;
 	private byte[] bytes;
 
-	private record BadResponse(Integer code, String error, String message) {}
+	private record BadResponse(Integer code, String error, String message, String details) {}
 
 	public ResponseBuilder() {
 		this.gson = new GsonBuilder()
@@ -35,6 +43,9 @@ public class ResponseBuilder {
 	}
 
 	public ResponseBuilder append(Throwable error) {
+		if (error instanceof HttpException httpException) {
+			return this.setError(httpException);
+		}
 		return this.setError(error);
 	}
 
@@ -80,7 +91,7 @@ public class ResponseBuilder {
 					return this;
 				} else {
 					this.status = HttpStatus.INTERNAL_ERROR;
-					this.body = new BadResponse(this.status.getCode(), null, "No response data");
+					this.body = new BadResponse(this.status.getCode(), null, "No response data", null);
 					this.bytes = gson.toJson(this.body).getBytes(charset);
 				}
 			}
@@ -90,13 +101,39 @@ public class ResponseBuilder {
 				this.status.isRedirected())
 			{
 				var code = this.error.getStatus().getCode();
-				var error = this.error.getCause().getClass().getSimpleName();
-				var message = this.error.getCause().getMessage();
 
-				if (message == null || message.isBlank())
-					message = this.error.getStatus().getMessage();
+				var error = new AtomicReference<String>();
+				var message = new AtomicReference<String>();
+				var details = new AtomicReference<String>();
 
-				this.body = new BadResponse(code, error, message);
+				Optional.ofNullable(this.error.getCause()).ifPresentOrElse(
+						err -> {
+							var trace = new StringBuilder();
+							Arrays.stream(err.getStackTrace()).forEach(e -> {
+								if (!e.isNativeMethod()) {
+									trace.append(
+											"%s#%s(...) in line %d;%n"
+											.formatted(e.getClassName(), e.getMethodName(), e.getLineNumber())
+									);
+								}
+							});
+							error.set(err.getClass().getSimpleName());
+							message.set(err.getMessage());
+							details.set(trace.toString());
+
+						},
+						() -> {
+							error.set(this.error.getClass().getSimpleName());
+							message.set(this.error.getMessage());
+						}
+				);
+
+
+
+				if (message.get() == null || message.get().isBlank())
+					message.set(this.error.getStatus().getMessage());
+
+				this.body = new BadResponse(code, error.get(), message.get(), details.get());
 				this.bytes = gson.toJson(this.body).getBytes(charset);
 
 				return this;
@@ -104,15 +141,6 @@ public class ResponseBuilder {
 		}
 
 		return this;
-	}
-
-	public byte[] toBytes() {
-		return this.commit().bytes;
-	}
-
-	@Override
-	public String toString() {
-		return gson.toJson(this.body);
 	}
 
 	public ResponseBuilder setStatus(HttpStatus status) {
@@ -190,4 +218,14 @@ public class ResponseBuilder {
 	public int getLength() {
 		return this.commit().bytes.length;
 	}
+
+	public byte[] toBytes() {
+		return this.commit().bytes;
+	}
+
+	@Override
+	public String toString() {
+		return gson.toJson(this.body);
+	}
+
 }

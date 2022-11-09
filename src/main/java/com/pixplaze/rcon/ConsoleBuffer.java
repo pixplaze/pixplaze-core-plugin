@@ -14,7 +14,14 @@ public class ConsoleBuffer {
         history.add(line);
     }
 
+    public List<String> getHistory() {
+        return this.getHistory(this.history.size());
+    }
+
     public List<String> getHistory(int size) {
+        if (size < 0)
+            size = history.size() + size;
+
         if (size >= history.size()) {
             return new ArrayList<>(history);
         }

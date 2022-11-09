@@ -15,7 +15,6 @@ import com.pixplaze.util.Utils;
 
 import com.sun.net.httpserver.HttpExchange;
 
-import org.apache.commons.lang.math.NumberUtils;
 import org.bukkit.command.CommandSender;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -42,12 +41,10 @@ public class RconHttpController implements HttpController {
 	}
 
 	@GetHandler("/rcon/lines")
-	public void handleGetRconLines(HttpExchange exchange, QueryParams params) throws IOException {
+	public List<String> handleGetRconLines(HttpExchange exchange, QueryParams params) throws IOException {
 		final var MAX_LINES_COUNT = plugin.getConsoleBuffer().getSize();
 
-		if (!processRequestToken(exchange, params)) return;
-
-		var rb = new ResponseBodyBuilder();
+		validateAccessToken(params);
 
 		/*
 		 * Получение количества возвращаемых строчек консоли.
@@ -55,65 +52,39 @@ public class RconHttpController implements HttpController {
 		 * Если это количество не было указано в запросе или равняется нулю, то запрос вернёт
 		 * максимальное количество строк.
 		 */
-		var count = 0;
-		if (!params.has("count")) {
-			count = MAX_LINES_COUNT;
-		} else if (!NumberUtils.isNumber(params.getAsString("count"))) {
-			throw new HttpException(HttpStatus.BAD_REQUEST, null);
-//			rb.setError("InvalidCountError").setMessage("Parameter count must be number!");
-//			sendResponse(exchange, HttpStatus.BAD_REQUEST.getCode(), rb.getFinal());
-		} else if (params.getAsInt("count") == 0) {
-			count = MAX_LINES_COUNT;
-		} else {
-			count = params.getAsInt("count");
-		}
+		int count = params.getAsInt("count").orElse(MAX_LINES_COUNT);
 
-		var lines = PixplazeCorePlugin.getInstance().getConsoleBuffer().getHistory(count);
+		if (params.has("count") && count == MAX_LINES_COUNT && count != 0)
+			throw new HttpException(HttpStatus.BAD_REQUEST, "Parameter count must be an integer!");
 
-		// Попытка отправки результата запроса
-		try {
-			rb.setResponse(linesToJsonResponse(lines)).setMessage("Command request success");
-			sendResponse(exchange, HttpStatus.OK.getCode(), rb.getFinal());
-		} catch (Exception e) {
-			logger.warning(e.getMessage());
-			rb.setError(e.getClass().getTypeName()).setMessage(e.getMessage());
-			sendResponse(exchange, HttpStatus.INTERNAL_ERROR.getCode(), rb.getFinal());
-		}
+		if (count == 0) count = MAX_LINES_COUNT;
+
+		return PixplazeCorePlugin.getInstance().getConsoleBuffer().getHistory(count);
 	}
 
 	@PostHandler("/rcon/command")
-	public void handlePostRconCommand(HttpExchange exchange, QueryParams params) throws IOException {
-		if (!processRequestToken(exchange, params)) return;
+	public String handlePostRconCommand(HttpExchange exchange, QueryParams params) throws IOException {
+		validateAccessToken(params);
 
-		var rb = new ResponseBodyBuilder();
+		params.getAsString("line")
+				.ifPresentOrElse(this::onCommandProvided, this::onCommandMissed);
 
-		// Получение отправленной команды и проверка её на валидность
-		var line = "";
-		if (!params.has("line")) {
-			rb.setError("InvalidParamError").setMessage("No parameter line");
-			sendResponse(exchange, HttpStatus.BAD_REQUEST.getCode(), rb.getFinal());
-			return;
-		} else {
-			line = params.getAsString("line");
-		}
+		return PixplazeCorePlugin.getInstance().getConsoleBuffer().getHistory(-1).get(0);
+	}
 
-		if ("".equals(line)) {
-			rb.setError("InvalidParamError").setMessage("Parameter line cannot be empty");
-			sendResponse(exchange, HttpStatus.BAD_REQUEST.getCode(), rb.getFinal());
-			return;
-		}
+	private void onCommandProvided(String command) {
+		if (command.isBlank())
+			throw new HttpException(HttpStatus.BAD_REQUEST, "Query parameter \"line\" is blank!");
 
-		// Попытка выполнения команды и отправки ответа с результатом на запрос
 		try {
-			dispatchCommand(plugin.getServer().getConsoleSender(), line);
-			rb.setMessage("Command sent successfully");
-			sendResponse(exchange, HttpStatus.OK.getCode(), rb.getFinal());
+			dispatchCommand(plugin.getServer().getConsoleSender(), command);
 		} catch (Exception e) {
-			logger.warning("[ERROR]:\tError on sending command!");
-			logger.warning(e.getMessage());
-			rb.setMessage("Command execution error");
-			sendResponse(exchange, HttpStatus.OK.getCode(), rb.getFinal());
+			throw new HttpException(HttpStatus.INTERNAL_ERROR, e.getMessage());
 		}
+	}
+
+	private void onCommandMissed() {
+		throw new HttpException(HttpStatus.BAD_REQUEST, "Required query parameter \"line\" is missed!");
 	}
 
 	private void sendResponse(HttpExchange exchange, int code, String responseBody) throws IOException {
@@ -137,18 +108,18 @@ public class RconHttpController implements HttpController {
 		return jsonResponse;
 	}
 
-	private boolean processRequestToken(HttpExchange exchange, QueryParams params) throws IOException {
-		ResponseBodyBuilder rb = new ResponseBodyBuilder();
-		if (!params.has("access-token")) {
-			rb.setError("InvalidTokenError").setMessage("Token is required");
-			sendResponse(exchange, HttpStatus.UNAUTHORIZED.getCode(), rb.getFinal());
-			return false;
-		} else if (!Utils.checkToken(params.getAsString("access-token"))) {
-			rb.setError("InvalidTokenError").setMessage("Access token is invalid");
-			sendResponse(exchange, HttpStatus.UNAUTHORIZED.getCode(), rb.getFinal());
-			return false;
-		}
-		return true;
+	private void validateAccessToken(QueryParams params) throws IOException {
+		params.getAsString("access-token")
+				.ifPresentOrElse(this::onTokenProvided, this::onTokenMissed);
+	}
+
+	private void onTokenProvided(final String token) {
+		if (Utils.checkToken(token)) return;
+		throw new HttpException(HttpStatus.UNAUTHORIZED, "Token is invalid. Access Denied.");
+	}
+
+	private void onTokenMissed() {
+		throw new HttpException(HttpStatus.BAD_REQUEST, "Required query parameter \"access-token\" is missed!");
 	}
 
 	private void dispatchCommand(CommandSender sender, String command) {

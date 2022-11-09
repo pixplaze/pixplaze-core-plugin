@@ -9,7 +9,7 @@
     <groupId>com.pixplaze.plugin</groupId>
     <artifactId>pixplaze-core-plugin</artifactId>
 
-    <version>0.1.3-indev</version>
+    <version>0.1.4-indev</version>
 
     <properties>
         <java.version>17</java.version>

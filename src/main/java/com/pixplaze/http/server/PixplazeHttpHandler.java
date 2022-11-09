@@ -10,6 +10,7 @@ import com.sun.net.httpserver.HttpHandler;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
@@ -30,10 +31,11 @@ public class PixplazeHttpHandler implements HttpHandler {
     @Override
     public void handle(HttpExchange exchange) {
         var rb = new ResponseBuilder();
-        QueryParams params;
         try {
+            QueryParams params;
             var requestMethod = exchange.getRequestMethod();
-            var requestHandler = mapping.get(requestMethod);
+            var requestHandler = Optional.ofNullable(mapping.get(requestMethod))
+                    .orElseThrow(() -> new BadMethodException(requestMethod, context));
 
             try {
                 params = new QueryParams(exchange.getRequestURI().getQuery());
@@ -43,23 +45,21 @@ public class PixplazeHttpHandler implements HttpHandler {
 
             controller.beforeEach(exchange);
 
-            if (requestHandler != null) {
-                var result = requestHandler.invoke(controller, exchange, params);
-                logger.warning(result.toString());
-                Optional.ofNullable(result).ifPresent(rb::append);
-            } else {
-                throw new BadMethodException(requestMethod, context);
-            }
+            var result = requestHandler.invoke(controller, exchange, params);
+            Optional.ofNullable(result).ifPresent(rb::append);
 
             exchange.sendResponseHeaders(rb.getCode(), rb.getLength());
             exchange.getResponseBody().write(rb.toBytes());
         } catch (HttpException e) {
+            logger.warning("HttpException");
             rb.append(e);
             logger.warning(e.getMessage());
         } catch (InvocationTargetException e) {
+            logger.warning("InvocationTargetException");
             rb.append(e.getCause());
             logger.warning(e.getCause().getMessage());
         } catch (Throwable e) {
+            logger.warning("Throwable");
             rb.append(e);
             logger.warning(e.getMessage());
         }
@@ -68,6 +68,7 @@ public class PixplazeHttpHandler implements HttpHandler {
             exchange.sendResponseHeaders(rb.getCode(), rb.getLength());
             exchange.getResponseBody().write(rb.toBytes());
         } catch (Throwable f) {
+            logger.warning(f.getMessage());
             throw new RuntimeException(
                     "Can not serve %s %s request"
                     .formatted(exchange.getRequestMethod(), exchange.getRequestURI())
