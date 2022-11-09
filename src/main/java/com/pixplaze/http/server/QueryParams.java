@@ -6,10 +6,12 @@ import java.util.*;
 
 public class QueryParams {
 
-	private final Map<String, String> values;
+	private Map<String, String> values;
+
+	protected QueryParams() {}
 
 	protected QueryParams(String query) {
-		this.values = parse(query);
+		this(parse(query));
 	}
 
 	protected QueryParams(Map<String, String> values) {
@@ -17,7 +19,7 @@ public class QueryParams {
 	}
 
 	public boolean isEmpty() {
-		return values == null || values.isEmpty();
+		return this.values == null || this.values.isEmpty();
 	}
 
 	public boolean isPresent() {
@@ -28,52 +30,53 @@ public class QueryParams {
 		return this.isPresent() && this.values.containsKey(name);
 	}
 
-// TODO: изменить API извлечения параметра запроса на похожее:
-//	public Optional<Integer> getAsInt(String key) {
-//		var value = variables.get(key);
-//		Optional<Integer> result;
-//		try {
-//			result = Optional.of(Integer.parseInt(value));
-//		} catch (Exception e) {
-//			result = Optional.empty();
-//		}
-//
-//		return result;
-//	}
-
-	@Deprecated(since = "0.1.3-indev", forRemoval = true)
-	public String getAsString(String key) {
-		return values.get(key);
+	public Optional<Integer> getAsInt(final String key) {
+		var value = values.get(key);
+		try {
+			return Optional.of(Integer.parseInt(value));
+		} catch (Exception e) {
+			return Optional.empty();
+		}
 	}
 
-	@Deprecated(since = "0.1.3-indev", forRemoval = true)
-	public int getAsInt(String key) {
-		return Integer.parseInt(values.get(key));
+	public Optional<Float> getAsFloat(final String key) {
+		var value = this.values.get(key);
+		try {
+			return Optional.of(Float.parseFloat(value));
+		} catch (Exception e) {
+			return Optional.empty();
+		}
 	}
 
-	@Deprecated(since = "0.1.3-indev", forRemoval = true)
-	public double getAsDouble(String key) {
-		return Double.parseDouble(values.get(key));
+	public Optional<Double> getAsDouble(final String key) {
+		var value = this.values.get(key);
+		try {
+			return Optional.of(Double.parseDouble(value));
+		} catch (Exception e) {
+			return Optional.empty();
+		}
 	}
 
-	@Deprecated(since = "0.1.3-indev", forRemoval = true)
-	public float getAsFloat(String key) {
-		return Float.parseFloat(values.get(key));
+	public Optional<Boolean> getAsBoolean(final String key) {
+		var value = this.values.getOrDefault(key, "");
+		if (value.equalsIgnoreCase("true"))
+			return Optional.of(true);
+		if (value.equalsIgnoreCase("false"))
+			return Optional.of(false);
+		return Optional.empty();
 	}
 
-	@Deprecated(since = "0.1.3-indev", forRemoval = true)
-	public boolean getAsBoolean(String key) {
-		return Boolean.parseBoolean(values.get(key));
+	public Optional<String> getAsString(final String key) {
+		return Optional.ofNullable(this.values.get(key));
 	}
 
 	public static Map<String, String> parse(String query) throws QueryParseException {
-		if (query == null || query.isBlank()) {
-			return null;
-		}
+//		query = Optional.ofNullable(query).orElse("");
+		var map = new HashMap<String, String>();
+		if (query == null || query.isBlank()) return map;
 
 		var key = "";
 		var val = "";
-		var map = new HashMap<String, String>();
 		var stk = new StringTokenizer(query, "?&=");
 		if (stk.countTokens() < 2) throw new QueryParseException();
 		try {
