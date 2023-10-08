@@ -1,22 +1,13 @@
 package com.pixplaze.plugin;
 
-import com.pixplaze.controllers.TestHttpController;
-import com.pixplaze.exceptions.HttpServerException;
-import com.pixplaze.exceptions.InvalidAddressException;
-import com.pixplaze.exceptions.CannotDefineAddressException;
-import com.pixplaze.controllers.RconHttpController;
-import com.pixplaze.http.server.PixplazeHttpServer;
 import com.pixplaze.rcon.ConsoleBuffer;
 import org.bukkit.plugin.java.JavaPlugin;
-
-import java.util.Optional;
 
 public final class PixplazeCorePlugin extends JavaPlugin {
 
     private static PixplazeCorePlugin instance;
 
     private ConsoleBuffer consoleBuffer;
-    private PixplazeHttpServer rconServer;
 
     public PixplazeCorePlugin() {
         if (instance == null) {
@@ -33,8 +24,6 @@ public final class PixplazeCorePlugin extends JavaPlugin {
         initConsoleBuffer();
         initRconHttpServer();
         saveDefaultConfig();
-        rconServer.mount(new RconHttpController(this, getLogger()));
-        rconServer.mount(new TestHttpController());
 
         var messages = getServer().getMessenger().getOutgoingChannels();
         for (var message: messages) {
@@ -44,8 +33,7 @@ public final class PixplazeCorePlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        Optional.ofNullable(getRconHttpServer())
-                .ifPresent(PixplazeHttpServer::stop);
+
     }
 
     public ConsoleBuffer getConsoleBuffer() {
@@ -74,31 +62,5 @@ public final class PixplazeCorePlugin extends JavaPlugin {
         var address = getConfig().getString("http-listen-ip");
         var port = getConfig().getInt("http-listen-port");
         var tryAgain = true;
-        while (tryAgain) {
-            try {
-                rconServer = new PixplazeHttpServer(address, port);
-                tryAgain = false;
-            } catch (InvalidAddressException e) {
-                address = "auto";
-                this.getLogger().warning(e.getMessage());
-            } catch (CannotDefineAddressException e) {
-                address = "127.0.0.1";
-                this.getLogger().warning(e.getMessage());
-            } catch (HttpServerException e) {
-                tryAgain = false;
-                this.getLogger().warning(e.getMessage());
-            }
-        }
-        Optional.ofNullable(getRconHttpServer()).ifPresent(rcon -> {
-            rcon.start();
-            this.getLogger().info(
-                    "Starting PixplazeCore on: %s:%d"
-                    .formatted(rcon.getAddress(), rcon.getPort())
-            );
-        });
-    }
-
-    public PixplazeHttpServer getRconHttpServer() {
-        return this.rconServer;
     }
 }
