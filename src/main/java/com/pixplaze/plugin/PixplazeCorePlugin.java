@@ -1,28 +1,31 @@
 package com.pixplaze.plugin;
 
+import com.pixplaze.api.HttpServer;
+import com.pixplaze.api.PlayerController;
 import com.pixplaze.rcon.ConsoleBuffer;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.Optional;
 
 public final class PixplazeCorePlugin extends JavaPlugin {
 
     private static PixplazeCorePlugin instance;
-
     private ConsoleBuffer consoleBuffer;
+    private HttpServer httpServer;
 
     public PixplazeCorePlugin() {
-        if (instance == null) {
-            instance = this;
-        }
+        instance = this;
     }
 
     public static PixplazeCorePlugin getInstance() {
-        return instance;
+        return instance = Optional.ofNullable(instance)
+                .orElseGet(PixplazeCorePlugin::new);
     }
 
     @Override
     public void onEnable() {
         initConsoleBuffer();
-        initRconHttpServer();
+        initHttpServer();
         saveDefaultConfig();
 
         var messages = getServer().getMessenger().getOutgoingChannels();
@@ -33,7 +36,7 @@ public final class PixplazeCorePlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-
+        Optional.ofNullable(httpServer).ifPresent(HttpServer::stop);
     }
 
     public ConsoleBuffer getConsoleBuffer() {
@@ -58,9 +61,12 @@ public final class PixplazeCorePlugin extends JavaPlugin {
      * Если создать HTTP-сервер по прежнуму не удаётся, печатает сообщение об ошибке.
      * </pre>
      */
-    private void initRconHttpServer() {
+    private void initHttpServer() {
         var address = getConfig().getString("http-listen-ip");
         var port = getConfig().getInt("http-listen-port");
-        var tryAgain = true;
+
+        httpServer = new HttpServer(port);
+        httpServer.register(PlayerController.class, this);
+        httpServer.start();
     }
 }
