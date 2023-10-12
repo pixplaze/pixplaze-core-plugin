@@ -1,24 +1,26 @@
 package com.pixplaze.api;
 
-import com.pixplaze.api.annotations.GetHandler;
+import com.pixplaze.api.server.annotations.GetHandler;
+import com.pixplaze.api.server.annotations.RestController;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import io.javalin.http.Context;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.Server;
-import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
-
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.bukkit.OfflinePlayer;
+import org.bukkit.Server;
+import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 
+@RestController("/path")
 public class PlayerController {
+
     private final PixplazeCorePlugin plugin;
 
-    public PlayerController(PixplazeCorePlugin plugin) {
-        this.plugin = plugin;
+    public PlayerController() {
+        this.plugin = PixplazeCorePlugin.getInstance();
     }
 
     @GetHandler("/player")
@@ -42,7 +44,7 @@ public class PlayerController {
             default -> players.addAll(getAllPlayers(server));
         }
 
-        context.result(players.toString());
+        context.result(players.toString()).status(200);
     }
 
     private @NotNull Collection<String> getAllPlayers(Server server) {

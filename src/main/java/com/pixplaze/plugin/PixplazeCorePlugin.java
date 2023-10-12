@@ -1,7 +1,6 @@
 package com.pixplaze.plugin;
 
-import com.pixplaze.api.HttpServer;
-import com.pixplaze.api.PlayerController;
+import com.pixplaze.api.server.HttpServer;
 import com.pixplaze.rcon.ConsoleBuffer;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -36,7 +35,8 @@ public final class PixplazeCorePlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        Optional.ofNullable(httpServer).ifPresent(HttpServer::stop);
+        Optional.ofNullable(httpServer)
+                .ifPresent(HttpServer::stop);
     }
 
     public ConsoleBuffer getConsoleBuffer() {
@@ -58,7 +58,7 @@ public final class PixplazeCorePlugin extends JavaPlugin {
      * В случае, если автоматически определить адрес не удаётся, сервер запускается
      * на {@code 127.0.0.1}.
      *
-     * Если создать HTTP-сервер по прежнуму не удаётся, печатает сообщение об ошибке.
+     * Если создать HTTP-сервер по прежнему не удаётся, печатает сообщение об ошибке.
      * </pre>
      */
     private void initHttpServer() {
@@ -66,7 +66,7 @@ public final class PixplazeCorePlugin extends JavaPlugin {
         var port = getConfig().getInt("http-listen-port");
 
         httpServer = new HttpServer(port);
-        httpServer.register(PlayerController.class, this);
-        httpServer.start();
+//        httpServer.register(PlayerController.class, this);
+//        httpServer.start();
     }
 }

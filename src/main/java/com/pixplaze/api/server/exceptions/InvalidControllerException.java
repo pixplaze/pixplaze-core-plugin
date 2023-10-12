@@ -1,4 +1,4 @@
-package com.pixplaze.api.exceptions;
+package com.pixplaze.api.server.exceptions;
 
 import java.util.Arrays;
 

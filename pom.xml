@@ -40,20 +40,29 @@
                 <version>3.5.1</version>
                 <configuration>
                     <filters>
-                        <filter>
-                            <artifact>*:*</artifact>
-                            <excludes>
-                                <exclude>META-INF/*.SF</exclude>
-                                <exclude>META-INF/*.DSA</exclude>
-                                <exclude>META-INF/*.RSA</exclude>
-                            </excludes>
-                        </filter>
+<!--                        <filter>-->
+<!--                            <artifact>*:*</artifact>-->
+<!--                            <excludes>-->
+<!--                                <exclude>META-INF/*.SF</exclude>-->
+<!--                                <exclude>META-INF/*.DSA</exclude>-->
+<!--                                <exclude>META-INF/*.RSA</exclude>-->
+<!--                            </excludes>-->
+<!--                        </filter>-->
                     </filters>
-                    <artifactSet>
-<!--                        <includes>io.javalin:javalin</includes>-->
-<!--                        <excludes>org.jetbrains:*</excludes>-->
-<!--                        <excludes>org.slf4j:slf4j-api</excludes>-->
-                    </artifactSet>
+<!--                    <artifactSet>-->
+<!--                        <excludes>-->
+<!--                            <exclude>org.slf4j</exclude>-->
+<!--                            <exclude>javax.servlet</exclude>-->
+<!--                            <exclude>org.jetbrains.kotlin</exclude>-->
+<!--                            <exclude>org.jetbrains:annotations</exclude>-->
+<!--                            <exclude>org.jetbrains:annotations</exclude>-->
+<!--                            <exclude>org.eclipse.*</exclude>-->
+<!--                            <exclude>javax.servlet</exclude>-->
+<!--                        </excludes>-->
+<!--                        <includes>-->
+<!--                            <include>kotlin.stdlib</include>-->
+<!--                        </includes>-->
+<!--                    </artifactSet>-->
                 </configuration>
                 <executions>
                     <execution>
@@ -90,7 +99,7 @@
         <dependency>
             <groupId>io.javalin</groupId>
             <artifactId>javalin</artifactId>
-            <version>5.6.2</version>
+            <version>LATEST</version>
         </dependency>
     </dependencies>
 </project>
