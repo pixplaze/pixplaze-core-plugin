@@ -1,7 +1,9 @@
 package com.pixplaze.plugin;
 
-import com.pixplaze.api.server.HttpServer;
+import com.pixplaze.api.PlayerController;
+import com.pixplaze.api.server.HandlerMapper;
 import com.pixplaze.rcon.ConsoleBuffer;
+import io.javalin.Javalin;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Optional;
@@ -10,7 +12,8 @@ public final class PixplazeCorePlugin extends JavaPlugin {
 
     private static PixplazeCorePlugin instance;
     private ConsoleBuffer consoleBuffer;
-    private HttpServer httpServer;
+//    private PlayerController playerController;
+    private Javalin javalin;
 
     public PixplazeCorePlugin() {
         instance = this;
@@ -35,8 +38,8 @@ public final class PixplazeCorePlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        Optional.ofNullable(httpServer)
-                .ifPresent(HttpServer::stop);
+        Optional.ofNullable(javalin)
+                .ifPresent(Javalin::stop);
     }
 
     public ConsoleBuffer getConsoleBuffer() {
@@ -64,9 +67,13 @@ public final class PixplazeCorePlugin extends JavaPlugin {
     private void initHttpServer() {
         var address = getConfig().getString("http-listen-ip");
         var port = getConfig().getInt("http-listen-port");
+//        playerController = new PlayerController(this);
 
-        httpServer = new HttpServer(port);
-//        httpServer.register(PlayerController.class, this);
-//        httpServer.start();
+        javalin = Javalin.create()
+                .start(8080);
+
+        var mapper = new HandlerMapper(javalin);
+        mapper.mapAnnotatedHandlersByClass(PlayerController.class, this);
+//        javalin.get("/player", playerController::getPlayerList);
     }
 }

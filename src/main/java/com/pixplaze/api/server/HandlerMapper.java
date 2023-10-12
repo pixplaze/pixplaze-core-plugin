@@ -33,7 +33,7 @@ public class HandlerMapper {
         this.logger = Logger.getLogger("HandlerMapper");
         this.classLoader = getClass().getClassLoader();
         this.controllersPackageName = controllersPackageName;
-        mapControllers();
+g
 //        var classes = findControllerClasses(controllersPackageName);
 //        logger.warning("Controllers:\n%s".formatted(classes.stream()
 //            .map(Class::getCanonicalName)
@@ -51,7 +51,7 @@ public class HandlerMapper {
         }
     }
 
-    protected <T> void mapAnnotatedHandlersByClass(Class<T> controllerClass, Object ... args) {
+    public <T> void mapAnnotatedHandlersByClass(Class<T> controllerClass, Object ... args) {
         Constructor<?> controllerConstructor;
         Class<?>[] controllerConstructorParameters = Arrays.stream(args)
             .map(Object::getClass)

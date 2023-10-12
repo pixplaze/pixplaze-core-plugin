@@ -14,13 +14,12 @@ import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-@RestController("/path")
 public class PlayerController {
 
     private final PixplazeCorePlugin plugin;
 
-    public PlayerController() {
-        this.plugin = PixplazeCorePlugin.getInstance();
+    public PlayerController(PixplazeCorePlugin plugin) {
+        this.plugin = plugin;
     }
 
     @GetHandler("/player")
