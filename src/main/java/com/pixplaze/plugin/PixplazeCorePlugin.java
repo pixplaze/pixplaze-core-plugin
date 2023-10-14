@@ -66,7 +66,5 @@ public final class PixplazeCorePlugin extends JavaPlugin {
         var port = getConfig().getInt("http-listen-port");
 
         httpServer = new HttpServer(port);
-//        httpServer.register(PlayerController.class, this);
-//        httpServer.start();
     }
 }

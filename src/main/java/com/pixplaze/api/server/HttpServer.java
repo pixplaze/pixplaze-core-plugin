@@ -11,7 +11,8 @@ public class HttpServer {
     public HttpServer(int port) {
         this.port = port;
         this.javalin = initializeJavalin();
-        this.handlerMapper = new HandlerMapper(javalin);
+        this.handlerMapper = new HandlerMapper("com.pixplaze.api");
+        handlerMapper.map(javalin);
         start();
     }
 
@@ -25,10 +26,12 @@ public class HttpServer {
     }
 
     public void stop() {
-        Optional.ofNullable(javalin).ifPresent(Javalin::stop);
+        Optional.ofNullable(javalin)
+                .ifPresent(Javalin::stop);
     }
 
+    @Deprecated
     public <T> void register(Class<T> controllerClass, Object ... args) {
-        handlerMapper.mapAnnotatedHandlersByClass(controllerClass, args);
+//        handlerMapper.mapAnnotatedHandlersByClass(controllerClass, args);
     }
 }
