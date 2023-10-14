@@ -1,13 +1,15 @@
-package com.pixplaze.http.annotations;
+package com.pixplaze.api.server.annotations;
+
+import io.javalin.http.HandlerType;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
 public @interface PostHandler {
-	String method() default "POST";
-	String value();
+    String value();
+    HandlerType method() default HandlerType.POST;
 }
