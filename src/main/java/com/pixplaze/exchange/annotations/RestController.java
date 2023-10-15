@@ -1,4 +1,4 @@
-package com.pixplaze.api.server.annotations;
+package com.pixplaze.exchange.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

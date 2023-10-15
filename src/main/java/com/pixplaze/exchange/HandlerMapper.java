@@ -1,12 +1,12 @@
-package com.pixplaze.api.server;
+package com.pixplaze.exchange;
 
 import com.google.common.annotations.Beta;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.ClassPath;
 import com.google.common.reflect.ClassPath.ClassInfo;
-import com.pixplaze.api.server.annotations.*;
-import com.pixplaze.api.server.exceptions.HandlerMappingException;
+import com.pixplaze.exchange.annotations.*;
+import com.pixplaze.exchange.exceptions.HandlerMappingException;
 import io.javalin.Javalin;
 
 import java.io.IOException;
@@ -75,7 +75,7 @@ public class HandlerMapper {
      * @see MethodHandlerWrapper
      * @see RestController
      */
-    private static ImmutableMap<Class<?>, ImmutableSet<MethodHandlerWrapper>> lookup(ClassLoader classLoader, String packageName) {
+    public static ImmutableMap<Class<?>, ImmutableSet<MethodHandlerWrapper>> lookup(ClassLoader classLoader, String packageName) {
         final var controllerClasses = findControllerClasses(classLoader, packageName, RestController.class);
         final ImmutableMap.Builder<Class<?>, ImmutableSet<MethodHandlerWrapper>> controllerClassesMapBuilder = ImmutableMap.builder();
         final ImmutableMap<Class<?>, ImmutableSet<MethodHandlerWrapper>> controllerClassesMap;
@@ -116,7 +116,7 @@ public class HandlerMapper {
      * @see MethodHandlerWrapper
      */
     @Beta
-    private static ImmutableSet<MethodHandlerWrapper> lookupControllerClass(
+    public static ImmutableSet<MethodHandlerWrapper> lookupControllerClass(
             Class<?> controllerClass,
             Object... args
     ) throws HandlerMappingException {
@@ -181,7 +181,7 @@ public class HandlerMapper {
      * @see MethodHandlerWrapper
      */
     @Beta
-    private static <T> MethodHandlerWrapper lookupMethodHandler(
+    public static <T> MethodHandlerWrapper lookupMethodHandler(
             T controllerObj,
             Method handlerMethod
     ) throws HandlerMappingException {
@@ -241,7 +241,7 @@ public class HandlerMapper {
     }
 
     @SuppressWarnings({"UnstableApiUsage", "SameParameterValue"})
-    private static Set<Class<?>> findControllerClasses(
+    public static Set<Class<?>> findControllerClasses(
             ClassLoader classLoader,
             String packageName,
             Class<? extends Annotation> annotationClass) {

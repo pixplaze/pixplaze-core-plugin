@@ -1,7 +1,7 @@
-package com.pixplaze.api;
+package com.pixplaze.api.controller;
 
-import com.pixplaze.api.server.annotations.GetHandler;
-import com.pixplaze.api.server.annotations.RestController;
+import com.pixplaze.exchange.annotations.GetHandler;
+import com.pixplaze.exchange.annotations.RestController;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import io.javalin.http.Context;
 import java.util.Arrays;

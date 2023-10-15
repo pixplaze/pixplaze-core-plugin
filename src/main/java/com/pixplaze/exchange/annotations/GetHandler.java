@@ -1,4 +1,4 @@
-package com.pixplaze.api.server.annotations;
+package com.pixplaze.exchange.annotations;
 
 import io.javalin.http.HandlerType;
 

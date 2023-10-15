@@ -1,4 +1,4 @@
-package com.pixplaze.api.server.annotations;
+package com.pixplaze.exchange.annotations;
 
 import io.javalin.http.HandlerType;
 
@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
-public @interface PutHandler {
+public @interface DeleteHandler {
     String value();
-    HandlerType method() default HandlerType.PUT;
+    HandlerType method() default HandlerType.DELETE;
 }

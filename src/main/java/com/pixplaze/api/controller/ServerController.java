@@ -1,6 +1,6 @@
-package com.pixplaze.api;
+package com.pixplaze.api.controller;
 
-import com.pixplaze.api.server.annotations.*;
+import com.pixplaze.exchange.annotations.*;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import io.javalin.http.Context;
 import org.bukkit.Bukkit;
