@@ -1,28 +1,27 @@
 package com.pixplaze.api.controller;
 
-import com.pixplaze.exchange.annotations.GetHandler;
-import com.pixplaze.exchange.annotations.RestController;
+import com.pixplaze.exchange.ExchangeController;
+import com.pixplaze.exchange.JavalinExchangeServer;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import io.javalin.http.Context;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.stream.Collectors;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-@RestController("/players")
-public class PlayerController {
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+public class PlayerController implements ExchangeController<JavalinExchangeServer> {
     private final PixplazeCorePlugin plugin;
 
     public PlayerController() {
         this.plugin = PixplazeCorePlugin.getInstance();
     }
 
-    @GetHandler("")
     public void getPlayerList(Context context) {
         var server = plugin.getServer();
         var status = Optional.ofNullable(context.queryParam("status"))
@@ -46,7 +45,6 @@ public class PlayerController {
         context.result(players.toString()).status(200);
     }
 
-    @GetHandler("/pidor")
     public void pidor(Context context) {
         context.status(228).result("Ti pidor!");
     }
@@ -65,5 +63,12 @@ public class PlayerController {
                 .collect(Collectors.toSet()));
 
         return players;
+    }
+
+    @Override
+    public void register(JavalinExchangeServer server) {
+        final var app = server.provide();
+        app.get("/players", this::getPlayerList);
+        app.get("/pidor", this::pidor);
     }
 }

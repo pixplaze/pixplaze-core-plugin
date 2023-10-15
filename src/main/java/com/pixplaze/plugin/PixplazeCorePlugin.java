@@ -1,6 +1,7 @@
 package com.pixplaze.plugin;
 
 import com.pixplaze.exchange.ExchangeServer;
+import com.pixplaze.exchange.JavalinExchangeServer;
 import com.pixplaze.rcon.ConsoleBuffer;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -65,6 +66,7 @@ public final class PixplazeCorePlugin extends JavaPlugin {
         var address = getConfig().getString("http-listen-ip");
         var port = getConfig().getInt("http-listen-port");
 
-        exchangeServer = new ExchangeServer(port);
+        exchangeServer = new JavalinExchangeServer(port);
+        exchangeServer.start();
     }
 }
