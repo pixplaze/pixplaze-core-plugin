@@ -1,4 +1,4 @@
-package com.pixplaze.api.controller;
+package com.pixplaze.api.rest.controller;
 
 import com.pixplaze.exchange.ExchangeController;
 import com.pixplaze.exchange.JavalinExchangeServer;
@@ -66,8 +66,8 @@ public class ServerController implements ExchangeController<JavalinExchangeServe
     }
 
     @Override
-    public void register(JavalinExchangeServer instance) {
-        final var app = instance.provide();
+    public void register(JavalinExchangeServer server) {
+        final var app = server.provide();
         app.routes(() -> path("/server", () -> {
             get("/version", this::getServerVersion);
             get("/worlds", this::getServerWorlds);

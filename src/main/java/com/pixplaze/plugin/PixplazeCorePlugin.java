@@ -3,6 +3,12 @@ package com.pixplaze.plugin;
 import com.pixplaze.exchange.ExchangeServer;
 import com.pixplaze.exchange.JavalinExchangeServer;
 import com.pixplaze.rcon.ConsoleBuffer;
+import io.javalin.Javalin;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Entity;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Optional;
@@ -11,7 +17,7 @@ public final class PixplazeCorePlugin extends JavaPlugin {
 
     private static PixplazeCorePlugin instance;
     private ConsoleBuffer consoleBuffer;
-    private ExchangeServer exchangeServer;
+    private ExchangeServer<Javalin> exchangeServer;
 
     public PixplazeCorePlugin() {
         instance = this;
@@ -28,10 +34,13 @@ public final class PixplazeCorePlugin extends JavaPlugin {
         initHttpServer();
         saveDefaultConfig();
 
-        var messages = getServer().getMessenger().getOutgoingChannels();
-        for (var message: messages) {
-            getLogger().warning(message);
-        }
+        getServer().getPluginManager().registerEvents(
+                new Listener() {
+                    @EventHandler
+                    private void onChatEvent(AsyncPlayerChatEvent e) {
+                        getLogger().warning(e.getMessage());
+                    }
+                }, this);
     }
 
     @Override

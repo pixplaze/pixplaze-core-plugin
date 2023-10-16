@@ -8,7 +8,7 @@ import java.util.List;
 
 public class ConsoleBuffer {
 
-    private FixedSizeQueue<String> history = new FixedSizeQueue<>();
+    private final FixedSizeQueue<String> history = new FixedSizeQueue<>();
 
     public void add(String line) {
         history.add(line);
