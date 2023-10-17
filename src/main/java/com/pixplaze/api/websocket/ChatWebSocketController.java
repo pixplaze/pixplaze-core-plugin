@@ -1,4 +1,4 @@
-package com.pixplaze.api.websocket.controller;
+package com.pixplaze.api.websocket;
 
 import com.pixplaze.exchange.ExchangeController;
 import com.pixplaze.exchange.JavalinExchangeServer;

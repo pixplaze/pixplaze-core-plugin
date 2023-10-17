@@ -1,7 +1,7 @@
 package com.pixplaze.exchange;
 
-import com.pixplaze.api.rest.controller.PlayerController;
-import com.pixplaze.api.rest.controller.ServerController;
+import com.pixplaze.api.rest.PlayerController;
+import com.pixplaze.api.rest.ServerController;
 import io.javalin.Javalin;
 
 public class JavalinExchangeServer implements ExchangeServer<Javalin> {

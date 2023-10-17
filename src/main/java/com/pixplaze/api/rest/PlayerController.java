@@ -1,4 +1,4 @@
-package com.pixplaze.api.rest.controller;
+package com.pixplaze.api.rest;
 
 import com.pixplaze.exchange.ExchangeController;
 import com.pixplaze.exchange.JavalinExchangeServer;
