@@ -1,5 +1,6 @@
 package com.pixplaze.api.rest;
 
+import com.pixplaze.api.dto.ServerDAO;
 import com.pixplaze.exchange.ExchangeController;
 import com.pixplaze.exchange.JavalinExchangeServer;
 import com.pixplaze.plugin.PixplazeCorePlugin;
@@ -14,9 +15,19 @@ import java.util.stream.Collectors;
 
 import static io.javalin.apibuilder.ApiBuilder.*;
 
-@Deprecated(forRemoval = true)
 public class ServerController implements ExchangeController<JavalinExchangeServer> {
     private final PixplazeCorePlugin plugin = PixplazeCorePlugin.getInstance();
+
+    public void getServer(Context context) {
+        var view = Optional.ofNullable(context.queryParam("view")).orElse("");
+
+        switch (view) {
+            case "short" -> {
+                context.result(ServerDAO.getServerShortInfo().toString()).status(200);
+            }
+            default -> {context.status(400);}
+        }
+    }
 
     public void getServerVersion(Context context) {
         context.result(
@@ -69,12 +80,7 @@ public class ServerController implements ExchangeController<JavalinExchangeServe
     public void register(JavalinExchangeServer server) {
         final var app = server.provide();
         app.routes(() -> path("/server", () -> {
-            get("/version", this::getServerVersion);
-            get("/worlds", this::getServerWorlds);
-            post("/stop", this::postServerStop);
-            post("/broadcast", this::postServerBroadcast);
-            put("/putin", this::getUniverseEmperor);
-            delete("/delete", this::deleteServerLOL);
+            get("", this::getServer);
         }));
     }
 }
