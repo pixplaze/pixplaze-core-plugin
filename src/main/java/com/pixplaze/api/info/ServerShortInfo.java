@@ -1,9 +1,9 @@
-package com.pixplaze.api.dto;
+package com.pixplaze.api.info;
 
 
 import org.json.JSONObject;
 
-public record ServerShortDTO(
+public record ServerShortInfo(
         String name,
         int maxPlayers,
         String difficulty,

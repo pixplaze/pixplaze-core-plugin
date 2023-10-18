@@ -1,6 +1,6 @@
 package com.pixplaze.api.rest;
 
-import com.pixplaze.api.dto.ServerDAO;
+import com.pixplaze.api.dao.ServerDAO;
 import com.pixplaze.exchange.ExchangeController;
 import com.pixplaze.exchange.JavalinExchangeServer;
 import com.pixplaze.plugin.PixplazeCorePlugin;
