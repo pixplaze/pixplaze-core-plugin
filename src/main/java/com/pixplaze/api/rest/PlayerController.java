@@ -17,11 +17,8 @@ import static io.javalin.apibuilder.ApiBuilder.get;
 import static io.javalin.apibuilder.ApiBuilder.path;
 
 public class PlayerController implements ExchangeController<JavalinExchangeServer> {
-    private final PixplazeCorePlugin plugin;
-
-    public PlayerController() {
-        this.plugin = PixplazeCorePlugin.getInstance();
-    }
+    private final PixplazeCorePlugin plugin = PixplazeCorePlugin.getInstance();
+    private final Server server = plugin.getServer();
 
     public void getPlayer(Context context) {
         try {
@@ -32,27 +29,12 @@ public class PlayerController implements ExchangeController<JavalinExchangeServe
         }
     }
 
-    public void getPlayerList(Context context) {
-        var server = plugin.getServer();
-        var status = Optional.ofNullable(context.queryParam("status"))
-                .orElse("");
-
-        var players = new HashSet<String>();
+    public void getPlayers(Context context) {
+        var status = Optional.ofNullable(context.queryParam("status")).orElse("");
 
         switch (status) {
-            case "online" -> players.addAll(server.getOnlinePlayers().stream()
-                    .map(Player::getName)
-                    .toList());
-            case "offline" -> players.addAll(Arrays.stream(server.getOfflinePlayers())
-                    .map(OfflinePlayer::getName)
-                    .toList());
-            case "banned" -> players.addAll(server.getBannedPlayers().stream()
-                    .map(OfflinePlayer::getName)
-                    .toList());
-            default -> players.addAll(getAllPlayers(server));
+            case "online" -> context.result(PlayerDAO.getOnlinePlayers().toString()).status(200);
         }
-
-        context.result(players.toString()).status(200);
     }
 
     private @NotNull Collection<String> getAllPlayers(Server server) {
@@ -76,6 +58,7 @@ public class PlayerController implements ExchangeController<JavalinExchangeServe
         final var app = server.provide();
         app.routes(() -> path("/players", () -> {
             get("/<uuid>", this::getPlayer);
+            get("", this::getPlayers);
         }));
     }
 }
