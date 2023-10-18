@@ -5,7 +5,7 @@ import org.json.JSONObject;
 
 public record ServerShortInfo(
         String name,
-        int maxPlayers,
+        Integer maxPlayers,
         String difficulty,
         String mapAddress
 ) {
