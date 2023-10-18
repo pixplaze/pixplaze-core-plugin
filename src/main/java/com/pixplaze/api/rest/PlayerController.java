@@ -1,5 +1,6 @@
 package com.pixplaze.api.rest;
 
+import com.pixplaze.api.dao.PlayerDAO;
 import com.pixplaze.exchange.ExchangeController;
 import com.pixplaze.exchange.JavalinExchangeServer;
 import com.pixplaze.plugin.PixplazeCorePlugin;
@@ -9,17 +10,26 @@ import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
+
+import static io.javalin.apibuilder.ApiBuilder.get;
+import static io.javalin.apibuilder.ApiBuilder.path;
 
 public class PlayerController implements ExchangeController<JavalinExchangeServer> {
     private final PixplazeCorePlugin plugin;
 
     public PlayerController() {
         this.plugin = PixplazeCorePlugin.getInstance();
+    }
+
+    public void getPlayer(Context context) {
+        try {
+            var uuid = UUID.fromString(context.pathParam("uuid"));
+            context.result(PlayerDAO.getPlayerInfo(uuid).toString()).status(200);
+        } catch (IllegalArgumentException e) {
+            context.status(400);
+        }
     }
 
     public void getPlayerList(Context context) {
@@ -45,10 +55,6 @@ public class PlayerController implements ExchangeController<JavalinExchangeServe
         context.result(players.toString()).status(200);
     }
 
-    public void pidor(Context context) {
-        context.status(228).result("Ti pidor!");
-    }
-
     private @NotNull Collection<String> getAllPlayers(Server server) {
         var players = new HashSet<String>();
 
@@ -68,7 +74,8 @@ public class PlayerController implements ExchangeController<JavalinExchangeServe
     @Override
     public void register(JavalinExchangeServer server) {
         final var app = server.provide();
-        app.get("/players", this::getPlayerList);
-        app.get("/pidor", this::pidor);
+        app.routes(() -> path("/players", () -> {
+            get("/<uuid>", this::getPlayer);
+        }));
     }
 }
