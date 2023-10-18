@@ -9,7 +9,11 @@ import org.apache.logging.log4j.core.filter.AbstractFilter;
 import org.apache.logging.log4j.message.Message;
 
 public class LoggerRconFilter extends AbstractFilter {
-    private static final ConsoleBuffer consoleBuffer = PixplazeCorePlugin.getInstance().getConsoleBuffer();
+    private final ConsoleBuffer consoleBuffer;
+
+    public LoggerRconFilter(ConsoleBuffer consoleBuffer) {
+        this.consoleBuffer = consoleBuffer;
+    }
 
     @Override
     public Result filter(LogEvent event) {

@@ -4,8 +4,6 @@ import com.pixplaze.exchange.ExchangeServer;
 import com.pixplaze.exchange.JavalinExchangeServer;
 import com.pixplaze.rcon.ConsoleBuffer;
 import io.javalin.Javalin;
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Entity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
