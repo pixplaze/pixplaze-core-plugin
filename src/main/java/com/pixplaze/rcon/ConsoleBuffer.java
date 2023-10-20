@@ -38,7 +38,7 @@ public class ConsoleBuffer {
         ((LoggerContext) LogManager.
                 getContext(false)).getConfiguration().
                 getLoggerConfig(LogManager.ROOT_LOGGER_NAME).
-                addFilter(new LoggerRconFilter());
+                addFilter(new LoggerRconFilter(this));
     }
 
     public int getSize() {
