@@ -5,13 +5,20 @@ import org.apache.logging.log4j.core.LoggerContext;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class ConsoleBuffer {
 
     private final FixedSizeQueue<String> history = new FixedSizeQueue<>();
+    private final List<Consumer<String>> logEventHandlers = new ArrayList<>();
 
     public void add(String line) {
         history.add(line);
+        logEventHandlers.forEach(handler -> handler.accept(line));
+    }
+
+    public void addLogEventHandler(Consumer<String> logEventHandler) {
+        logEventHandlers.add(logEventHandler);
     }
 
     public List<String> getHistory() {
