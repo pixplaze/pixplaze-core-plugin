@@ -12,7 +12,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
@@ -20,26 +20,24 @@ public class ChatWebSocketController implements ExchangeController<JavalinExchan
 
     private static final int MAX_BUFFER_SIZE = 1024;
     private static final int MAX_CONSOLE_LINES = 50;
-    private static int activeConnections = 0;
     private static final PixplazeCorePlugin plugin = PixplazeCorePlugin.getInstance();
     private static final Logger logger = plugin.getLogger();
-    private final Map<WsContext, BukkitTask> contexts = new ConcurrentHashMap<>();
+    private static int activeConnections = 0;
+    private final Collection<WsContext> contexts = Collections.synchronizedCollection(new ArrayList<>());
     private final ConsoleBuffer consoleBuffer;
 
     public ChatWebSocketController(ConsoleBuffer consoleBuffer) {
         this.consoleBuffer = consoleBuffer;
+        this.consoleBuffer.addLogEventHandler(this::send);
     }
 
     private void onConnect(WsConnectContext context) {
         activeConnections++;
         plugin.getLogger().warning("Active connections: [%2s]".formatted(activeConnections));
-//        context.send(consoleBuffer.getHistory());
-        contexts.put(context, new BukkitRunnable() {
-            @Override
-            public void run() {
-                update();
-            }
-        }.runTaskTimer(plugin, 0L, 20 * 10));
+
+        context.send(consoleBuffer.getHistory());
+        contexts.add(context);
+
         PixplazeCorePlugin.getInstance().getLogger().warning("WS CONNECT");
     }
 
@@ -48,7 +46,7 @@ public class ChatWebSocketController implements ExchangeController<JavalinExchan
         context.session.close();
 
         // Canceling BukkitTask then remove session!!!
-        contexts.get(context).cancel();
+//        contexts.get(context).cancel();
         contexts.remove(context);
 
         PixplazeCorePlugin.getInstance().getLogger().warning("WS DISCONNECT");
@@ -65,16 +63,22 @@ public class ChatWebSocketController implements ExchangeController<JavalinExchan
         }.runTask(plugin);
     }
 
-    private void update() {
-        contexts.keySet().stream()
+    private void send(String message) {
+        contexts.stream()
                 .filter(ctx -> ctx.session.isOpen())
-                .forEach(session -> session.send(consoleBuffer.getHistory()));
-        contexts.forEach((key, value) -> logger.warning(
-                "[%s]: %s".formatted(
-                        key.getSessionId(),
-                        key.session.isOpen() ? "opened" : "closed")
-        ));
-        logger.warning("Active sessions: %d".formatted(contexts.size()));
+                .forEach(session -> session.send(message));
+    }
+
+    private void update() {
+//        contexts.keySet().stream()
+//                .filter(ctx -> ctx.session.isOpen())
+//                .forEach(session -> session.send(consoleBuffer.getHistory()));
+//        contexts.forEach((key, value) -> logger.warning(
+//                "[%s]: %s".formatted(
+//                        key.getSessionId(),
+//                        key.session.isOpen() ? "opened" : "closed")
+//        ));
+//        logger.warning("Active sessions: %d".formatted(contexts.size()));
     }
 
     private void addSession() {
