@@ -18,12 +18,13 @@ import static io.javalin.apibuilder.ApiBuilder.path;
 
 public class PlayerController implements ExchangeController<JavalinExchangeServer> {
     private final PixplazeCorePlugin plugin = PixplazeCorePlugin.getInstance();
+    private final PlayerDAO playerDAO = new PlayerDAO();
     private final Server server = plugin.getServer();
 
     public void getPlayer(Context context) {
         try {
             var uuid = UUID.fromString(context.pathParam("uuid"));
-            context.result(PlayerDAO.getPlayerInfo(uuid).toString()).status(200);
+            context.result(playerDAO.getPlayerInfo(uuid).toString()).status(200);
         } catch (IllegalArgumentException e) {
             context.status(400);
         }
@@ -34,7 +35,7 @@ public class PlayerController implements ExchangeController<JavalinExchangeServe
                 .orElse("");
 
         switch (status) {
-            case "online" -> context.json(PlayerDAO.getOnlinePlayers()).status(200);
+            case "online" -> context.json(playerDAO.getOnlinePlayers()).status(200);
             default -> context.json(getAllPlayers(server));
         }
     }

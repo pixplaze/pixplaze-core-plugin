@@ -13,10 +13,10 @@ import java.util.stream.Collectors;
 
 public class PlayerDAO {
 
-    private final static PixplazeCorePlugin plugin = PixplazeCorePlugin.getInstance();
-    private static final Server server = plugin.getServer();
+    private final PixplazeCorePlugin plugin = PixplazeCorePlugin.getInstance();
+    private final Server server = plugin.getServer();
 
-    public static PlayerInfo getPlayerInfo(UUID uuid) {
+    public PlayerInfo getPlayerInfo(UUID uuid) {
         var player = server.getPlayer(uuid);
         if (player != null) {
             var username = player.getName();
@@ -32,13 +32,13 @@ public class PlayerDAO {
         return new PlayerInfo(uuid, username, status, playtime);
     }
 
-    public static PlayerInfo getPlayerInfo(Player player) {
+    public PlayerInfo getPlayerInfo(Player player) {
         return getPlayerInfo(player.getUniqueId());
     }
 
-    public static List<PlayerInfo> getOnlinePlayers() {
+    public List<PlayerInfo> getOnlinePlayers() {
         return server.getOnlinePlayers().stream()
-                .map(PlayerDAO::getPlayerInfo)
+                .map(this::getPlayerInfo)
                 .collect(Collectors.toList());
     }
 }
