@@ -1,6 +1,5 @@
 package com.pixplaze.rcon;
 
-import com.pixplaze.plugin.PixplazeCorePlugin;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.core.LogEvent;
@@ -27,7 +26,7 @@ public class LoggerRconFilter extends AbstractFilter {
         line += event.getMessage().getFormattedMessage();
         consoleBuffer.add(line);
 
-        return event == null ? Result.NEUTRAL : isLoggable(event.getMessage().getFormattedMessage());
+        return isLoggable(event.getMessage().getFormattedMessage());
     }
 
     @Override
