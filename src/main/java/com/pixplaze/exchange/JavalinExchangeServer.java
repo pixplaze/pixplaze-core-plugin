@@ -5,7 +5,6 @@ import com.pixplaze.api.rest.ServerController;
 import com.pixplaze.api.websocket.ChatWebSocketController;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import io.javalin.Javalin;
-import io.javalin.json.JavalinGson;
 
 public class JavalinExchangeServer implements ExchangeServer<Javalin> {
 
@@ -22,7 +21,7 @@ public class JavalinExchangeServer implements ExchangeServer<Javalin> {
         return Javalin.create(config -> {
             config.showJavalinBanner = false;
             config.routing.ignoreTrailingSlashes = true;
-            config.jsonMapper(new JavalinGson());
+            config.jsonMapper(new JavalinGsonWrapper());
         });
     }
 

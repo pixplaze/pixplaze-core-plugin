@@ -18,12 +18,18 @@ import static io.javalin.apibuilder.ApiBuilder.path;
 
 public class PlayerController implements ExchangeController<JavalinExchangeServer> {
     private final PixplazeCorePlugin plugin = PixplazeCorePlugin.getInstance();
+    private final PlayerDAO playerDAO = new PlayerDAO();
     private final Server server = plugin.getServer();
 
     public void getPlayer(Context context) {
         try {
-            var uuid = UUID.fromString(context.pathParam("uuid"));
-            context.result(PlayerDAO.getPlayerInfo(uuid).toString()).status(200);
+            var player = playerDAO.getPlayerInfo(UUID.fromString(context.pathParam("uuid")));
+
+            if (player.username() == null) {
+                context.status(404);
+                return;
+            }
+            context.json(player).status(200);
         } catch (IllegalArgumentException e) {
             context.status(400);
         }
@@ -34,32 +40,16 @@ public class PlayerController implements ExchangeController<JavalinExchangeServe
                 .orElse("");
 
         switch (status) {
-            case "online" -> context.json(PlayerDAO.getOnlinePlayers()).status(200);
-            default -> context.json(getAllPlayers(server));
+            case "online" -> context.json(playerDAO.getOnlinePlayers()).status(200);
+            default -> context.json(playerDAO.getAllPlayers()).status(200);
         }
-    }
-
-    private @NotNull Collection<String> getAllPlayers(Server server) {
-        var players = new HashSet<String>();
-
-        players.addAll(server.getOnlinePlayers().stream()
-                .map(Player::getName)
-                .collect(Collectors.toSet()));
-        players.addAll(server.getBannedPlayers().stream()
-                .map(OfflinePlayer::getName)
-                .collect(Collectors.toSet()));
-        players.addAll(Arrays.stream(server.getOfflinePlayers())
-                .map(OfflinePlayer::getName)
-                .collect(Collectors.toSet()));
-
-        return players;
     }
 
     @Override
     public void register(JavalinExchangeServer server) {
         final var app = server.provide();
         app.routes(() -> path("/players", () -> {
-            get("/<uuid>", this::getPlayer);
+            get("/{uuid}", this::getPlayer);
             get("", this::getPlayers);
         }));
     }

@@ -17,16 +17,17 @@ import static io.javalin.apibuilder.ApiBuilder.*;
 
 public class ServerController implements ExchangeController<JavalinExchangeServer> {
     private final PixplazeCorePlugin plugin = PixplazeCorePlugin.getInstance();
+    private final ServerDAO serverDAO = new ServerDAO();
 
     public void getServer(Context context) {
         var view = Optional.ofNullable(context.queryParam("view")).orElse("");
 
         switch (view) {
             case "short" -> {
-                context.result(ServerDAO.getServerShortInfo().toString()).status(200);
+                context.json(serverDAO.getServerShortInfo()).status(200);
             }
             case "status" -> {
-                context.result(ServerDAO.getServerStatusInfo().toString()).status(200);
+                context.json(serverDAO.getServerStatusInfo()).status(200);
             }
             default -> {
                 context.status(400);
