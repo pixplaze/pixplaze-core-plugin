@@ -23,8 +23,13 @@ public class PlayerController implements ExchangeController<JavalinExchangeServe
 
     public void getPlayer(Context context) {
         try {
-            var uuid = UUID.fromString(context.pathParam("uuid"));
-            context.json(playerDAO.getPlayerInfo(uuid)).status(200);
+            var player = playerDAO.getPlayerInfo(UUID.fromString(context.pathParam("uuid")));
+
+            if (player.username() == null) {
+                context.status(404);
+                return;
+            }
+            context.json(player).status(200);
         } catch (IllegalArgumentException e) {
             context.status(400);
         }
