@@ -24,10 +24,10 @@ public class ServerController implements ExchangeController<JavalinExchangeServe
 
         switch (view) {
             case "short" -> {
-                context.result(serverDAO.getServerShortInfo().toString()).status(200);
+                context.json(serverDAO.getServerShortInfo()).status(200);
             }
             case "status" -> {
-                context.result(serverDAO.getServerStatusInfo().toString()).status(200);
+                context.json(serverDAO.getServerStatusInfo()).status(200);
             }
             default -> {
                 context.status(400);

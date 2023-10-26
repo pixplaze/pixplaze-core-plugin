@@ -10,14 +10,4 @@ public record PlayerInfo(
         String username,
         String status,
         Long playtime
-) {
-    @Override
-    public String toString() {
-        return new JSONObject()
-                .put("uuid", uuid)
-                .put("username", username)
-                .put("status", status)
-                .put("playtime", playtime)
-                .toString();
-    }
-}
+) { }
