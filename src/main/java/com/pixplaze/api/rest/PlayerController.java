@@ -41,24 +41,8 @@ public class PlayerController implements ExchangeController<JavalinExchangeServe
 
         switch (status) {
             case "online" -> context.json(playerDAO.getOnlinePlayers()).status(200);
-            default -> context.json(getAllPlayers(server));
+            default -> context.json(playerDAO.getAllPlayers()).status(200);
         }
-    }
-
-    private @NotNull Collection<String> getAllPlayers(Server server) {
-        var players = new HashSet<String>();
-
-        players.addAll(server.getOnlinePlayers().stream()
-                .map(Player::getName)
-                .collect(Collectors.toSet()));
-        players.addAll(server.getBannedPlayers().stream()
-                .map(OfflinePlayer::getName)
-                .collect(Collectors.toSet()));
-        players.addAll(Arrays.stream(server.getOfflinePlayers())
-                .map(OfflinePlayer::getName)
-                .collect(Collectors.toSet()));
-
-        return players;
     }
 
     @Override

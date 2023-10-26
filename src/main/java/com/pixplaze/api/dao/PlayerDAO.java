@@ -2,9 +2,12 @@ package com.pixplaze.api.dao;
 
 import com.pixplaze.api.info.PlayerInfo;
 import com.pixplaze.plugin.PixplazeCorePlugin;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.Server;
 import org.bukkit.Statistic;
 import org.bukkit.entity.Player;
+import org.checkerframework.checker.units.qual.A;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -30,7 +33,7 @@ public class PlayerDAO {
         return new PlayerInfo(uuid, username, status, playtime);
     }
 
-    public PlayerInfo getPlayerInfo(Player player) {
+    public PlayerInfo getPlayerInfo(OfflinePlayer player) {
         return getPlayerInfo(player.getUniqueId());
     }
 
@@ -38,5 +41,18 @@ public class PlayerDAO {
         return server.getOnlinePlayers().stream()
                 .map(this::getPlayerInfo)
                 .collect(Collectors.toList());
+    }
+
+    public List<PlayerInfo> getOfflinePlayers() {
+        return Arrays.stream(server.getOfflinePlayers())
+                .map(this::getPlayerInfo)
+                .collect(Collectors.toList());
+    }
+
+    public List<PlayerInfo> getAllPlayers() {
+        var players = new ArrayList<PlayerInfo>();
+        players.addAll(getOfflinePlayers());
+        players.addAll(getOnlinePlayers());
+        return players;
     }
 }
