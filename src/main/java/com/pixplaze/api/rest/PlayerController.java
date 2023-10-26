@@ -60,7 +60,7 @@ public class PlayerController implements ExchangeController<JavalinExchangeServe
     public void register(JavalinExchangeServer server) {
         final var app = server.provide();
         app.routes(() -> path("/players", () -> {
-            get("/<uuid>", this::getPlayer);
+            get("/{uuid}", this::getPlayer);
             get("", this::getPlayers);
         }));
     }
