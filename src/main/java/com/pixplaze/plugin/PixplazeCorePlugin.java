@@ -31,14 +31,6 @@ public final class PixplazeCorePlugin extends JavaPlugin {
         initConsoleBuffer();
         initHttpServer();
         saveDefaultConfig();
-
-        getServer().getPluginManager().registerEvents(
-                new Listener() {
-                    @EventHandler
-                    private void onChatEvent(AsyncPlayerChatEvent e) {
-                        getLogger().warning(e.getMessage());
-                    }
-                }, this);
     }
 
     @Override

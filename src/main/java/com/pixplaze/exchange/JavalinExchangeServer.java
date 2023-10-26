@@ -33,6 +33,7 @@ public class JavalinExchangeServer implements ExchangeServer<Javalin> {
     @Override
     public void stop() {
         javalin.stop();
+        new Thread(this::awaitForClose).start();
     }
 
     @Override
@@ -45,5 +46,16 @@ public class JavalinExchangeServer implements ExchangeServer<Javalin> {
         new PlayerController().register(this);
         new ServerController().register(this);
         new ChatWebSocketController(PixplazeCorePlugin.getInstance().getConsoleBuffer()).register(this);
+    }
+
+    /**
+     * Ожидает закрытия процесса Javalin чтобы не блокировать jar-файл.
+     */
+    private void awaitForClose() {
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
