@@ -49,6 +49,18 @@ public class PlayerDAO {
                 .collect(Collectors.toList());
     }
 
+    public List<PlayerInfo> getBannedPlayers() {
+        return server.getBannedPlayers().stream()
+                .map(this::getPlayerInfo)
+                .collect(Collectors.toList());
+    }
+
+    public List<PlayerInfo> getWhitelistedPlayers() {
+        return server.getWhitelistedPlayers().stream()
+                .map(this::getPlayerInfo)
+                .collect(Collectors.toList());
+    }
+
     public List<PlayerInfo> getAllPlayers() {
         var players = new ArrayList<PlayerInfo>();
         players.addAll(getOfflinePlayers());
