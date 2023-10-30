@@ -37,11 +37,15 @@ public class PlayerController implements ExchangeController<JavalinExchangeServe
 
     public void getPlayers(Context context) {
         var status = Optional.ofNullable(context.queryParam("status"))
-                .orElse("");
+                .orElse("all");
 
         switch (status) {
             case "online" -> context.json(playerDAO.getOnlinePlayers()).status(200);
-            default -> context.json(playerDAO.getAllPlayers()).status(200);
+            case "offline" -> context.json(playerDAO.getOfflinePlayers()).status(200);
+            case "banned" -> context.json(playerDAO.getBannedPlayers()).status(200);
+            case "whitelisted" -> context.json(playerDAO.getWhitelistedPlayers()).status(200);
+            case "all" -> context.json(playerDAO.getAllPlayers()).status(200);
+            default -> context.status(400);
         }
     }
 
