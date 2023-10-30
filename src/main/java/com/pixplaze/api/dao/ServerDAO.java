@@ -15,7 +15,9 @@ public class ServerDAO {
         var maxPlayers = server.getMaxPlayers();
         var difficulty = server.getWorlds().get(0).getDifficulty().name();
         var mapAddress = "";
-        return new ServerShortInfo(name, maxPlayers, difficulty, mapAddress);
+        var coreName = server.getName();
+        var coreVersion = server.getBukkitVersion();
+        return new ServerShortInfo(name, maxPlayers, difficulty, mapAddress, coreName, coreVersion);
     }
 
     public ServerStatusInfo getServerStatusInfo() {
