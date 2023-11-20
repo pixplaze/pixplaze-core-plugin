@@ -6,7 +6,6 @@ import com.pixplaze.api.info.ServerStatusInfo;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import org.bukkit.Server;
 import org.bukkit.plugin.Plugin;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 
