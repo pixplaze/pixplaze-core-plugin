@@ -20,7 +20,7 @@ public class ServerController implements ExchangeController<JavalinExchangeServe
     private final ServerDAO serverDAO = new ServerDAO();
 
     public void getServer(Context context) {
-        var view = Optional.ofNullable(context.queryParam("view")).orElse("");
+        var view = Optional.ofNullable(context.queryParam("view")).orElse("short");
 
         switch (view) {
             case "short" -> {
@@ -28,6 +28,9 @@ public class ServerController implements ExchangeController<JavalinExchangeServe
             }
             case "status" -> {
                 context.json(serverDAO.getServerStatusInfo()).status(200);
+            }
+            case "full" -> {
+                context.json(serverDAO.getServerExtendedFullInfo()).status(200);
             }
             default -> {
                 context.status(400);

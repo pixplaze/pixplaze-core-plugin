@@ -18,6 +18,27 @@ public class ServerDAO {
         var name = server.getMotd();
         var maxPlayers = server.getMaxPlayers();
         var difficulty = server.getWorlds().get(0).getDifficulty().name();
+        var plugins = Arrays.stream(server.getPluginManager().getPlugins()).map(Plugin::getName).toList();
+        return new ServerInfo(name, maxPlayers, difficulty, null, null, null, plugins);
+    }
+
+    /**
+     * Временный метод для замены данных с бэкенда.
+     * Является обёрткой для ServerDAO#getServerShortInfo().
+     */
+    public ExtendedServerInfo getServerExtendedShortInfo() {
+        var name = "ServerName";
+        var tags = Arrays.asList("some", "tags");
+        var rating = 5;
+        var description = "The best server!";
+        var server = getServerShortInfo();
+        return new ExtendedServerInfo(name, tags, rating, description, server);
+    }
+
+    public ServerInfo getServerFullInfo() {
+        var name = server.getMotd();
+        var maxPlayers = server.getMaxPlayers();
+        var difficulty = server.getWorlds().get(0).getDifficulty().name();
         var mapAddress = "";
         var coreName = server.getName();
         var coreVersion = server.getVersion();
@@ -27,14 +48,14 @@ public class ServerDAO {
 
     /**
      * Временный метод для замены данных с бэкенда.
-     * Является обёрткой для ServerDAO#getServerInfo().
+     * Является обёрткой для ServerDAO#getServerFullInfo().
      */
-    public ExtendedServerInfo getServerExtendedShortInfo() {
+    public ExtendedServerInfo getServerExtendedFullInfo() {
         var name = "ServerName";
         var tags = Arrays.asList("some", "tags");
         var rating = 5;
         var description = "The best server!";
-        var server = getServerShortInfo();
+        var server = getServerFullInfo();
         return new ExtendedServerInfo(name, tags, rating, description, server);
     }
 
