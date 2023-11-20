@@ -1,10 +1,13 @@
 package com.pixplaze.api.info;
 
-public record ServerShortInfo(
+import java.util.List;
+
+public record ServerInfo(
         String name,
         Integer maxPlayers,
         String difficulty,
         String mapAddress,
         String coreName,
-        String coreVersion
+        String coreVersion,
+        List<String> plugins
 ) { }
