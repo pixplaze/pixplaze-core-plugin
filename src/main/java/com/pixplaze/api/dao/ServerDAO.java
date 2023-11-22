@@ -15,11 +15,27 @@ public class ServerDAO {
     private final Server server = plugin.getServer();
 
     public ServerInfo getServerShortInfo() {
+        var address = server.getIp();
+        var primary = true;
         var name = server.getMotd();
+        var thumbnail = "0JHQu9GP0KXQvtGH0YPQmtCw0LrQsNGC0YzQltC+0YHQutCwKSkp";
         var maxPlayers = server.getMaxPlayers();
         var difficulty = server.getWorlds().get(0).getDifficulty().name();
         var plugins = Arrays.stream(server.getPluginManager().getPlugins()).map(Plugin::getName).toList();
-        return new ServerInfo(name, maxPlayers, difficulty, null, null, null, plugins);
+        return new ServerInfo(
+                address,
+                null,
+                primary,
+                name,
+                thumbnail,
+                null,
+                null,
+                null,
+                null,
+                maxPlayers,
+                difficulty,
+                plugins
+        );
     }
 
     /**
@@ -36,14 +52,32 @@ public class ServerDAO {
     }
 
     public ServerInfo getServerFullInfo() {
+        var address = server.getIp();
+        var apiPort = 25566;
+        var primary = true;
         var name = server.getMotd();
-        var maxPlayers = server.getMaxPlayers();
-        var difficulty = server.getWorlds().get(0).getDifficulty().name();
-        var mapAddress = "";
+        var thumbnail = "0JHQu9GP0KXQvtGH0YPQmtCw0LrQsNGC0YzQltC+0YHQutCwKSkp";
         var coreName = server.getName();
         var coreVersion = server.getVersion();
+        var minecraftVersion = server.getBukkitVersion();
+        var mapPort = 25567;
+        var maxPlayers = server.getMaxPlayers();
+        var difficulty = server.getWorlds().get(0).getDifficulty().name();
         var plugins = Arrays.stream(server.getPluginManager().getPlugins()).map(Plugin::getName).toList();
-        return new ServerInfo(name, maxPlayers, difficulty, mapAddress, coreName, coreVersion, plugins);
+        return new ServerInfo(
+                address,
+                apiPort,
+                primary,
+                name,
+                thumbnail,
+                coreName,
+                coreVersion,
+                minecraftVersion,
+                mapPort,
+                maxPlayers,
+                difficulty,
+                plugins
+        );
     }
 
     /**
