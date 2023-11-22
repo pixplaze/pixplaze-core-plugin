@@ -1,20 +1,34 @@
-package com.pixplaze.http.rcon;
+package com.pixplaze.rcon;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LoggerContext;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class ConsoleBuffer {
 
-    private FixedSizeQueue<String> history = new FixedSizeQueue<>();
+    private final FixedSizeQueue<String> history = new FixedSizeQueue<>();
+    private final List<Consumer<String>> logEventHandlers = new ArrayList<>();
 
     public void add(String line) {
         history.add(line);
+        logEventHandlers.forEach(handler -> handler.accept(line));
+    }
+
+    public void addLogEventHandler(Consumer<String> logEventHandler) {
+        logEventHandlers.add(logEventHandler);
+    }
+
+    public List<String> getHistory() {
+        return this.getHistory(this.history.size());
     }
 
     public List<String> getHistory(int size) {
+        if (size < 0)
+            size = history.size() + size;
+
         if (size >= history.size()) {
             return new ArrayList<>(history);
         }
@@ -31,7 +45,7 @@ public class ConsoleBuffer {
         ((LoggerContext) LogManager.
                 getContext(false)).getConfiguration().
                 getLoggerConfig(LogManager.ROOT_LOGGER_NAME).
-                addFilter(new LoggerRconFilter());
+                addFilter(new LoggerRconFilter(this));
     }
 
     public int getSize() {
