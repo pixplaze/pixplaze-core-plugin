@@ -5,6 +5,10 @@ import com.pixplaze.api.rest.ServerController;
 import com.pixplaze.api.websocket.ChatWebSocketController;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import io.javalin.Javalin;
+import io.javalin.config.JavalinConfig;
+import io.javalin.config.RouterConfig;
+
+import static io.javalin.apibuilder.ApiBuilder.path;
 
 public class JavalinExchangeServer implements ExchangeServer<Javalin> {
 
@@ -14,13 +18,15 @@ public class JavalinExchangeServer implements ExchangeServer<Javalin> {
     public JavalinExchangeServer(int port) {
         this.javalin = initializeJavalin();
         this.port = port;
-        register();
     }
 
     private Javalin initializeJavalin() {
         return Javalin.create(config -> {
             config.showJavalinBanner = false;
-            config.routing.ignoreTrailingSlashes = true;
+            config.router.ignoreTrailingSlashes = true;
+            config.router.mount(new PlayerController()::register);
+            config.router.mount(new ServerController()::register);
+            config.router.mount(new ChatWebSocketController(PixplazeCorePlugin.getInstance().getConsoleBuffer())::register);
             config.jsonMapper(new JavalinGsonWrapper());
         });
     }
@@ -39,13 +45,6 @@ public class JavalinExchangeServer implements ExchangeServer<Javalin> {
     @Override
     public Javalin provide() {
         return javalin;
-    }
-
-    @Override
-    public void register() {
-        new PlayerController().register(this);
-        new ServerController().register(this);
-        new ChatWebSocketController(PixplazeCorePlugin.getInstance().getConsoleBuffer()).register(this);
     }
 
     /**

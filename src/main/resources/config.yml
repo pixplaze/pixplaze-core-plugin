@@ -1,3 +1,5 @@
 access-token: "YourToken"
 http-listen-port: 25566
 http-listen-ip: auto
+cors:
+  "localhost"

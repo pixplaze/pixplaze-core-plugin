@@ -4,16 +4,17 @@ import com.pixplaze.exchange.ExchangeController;
 import com.pixplaze.exchange.JavalinExchangeServer;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import com.pixplaze.rcon.ConsoleBuffer;
+import io.javalin.router.JavalinDefaultRouting;
 import io.javalin.websocket.WsCloseContext;
 import io.javalin.websocket.WsConnectContext;
 import io.javalin.websocket.WsContext;
 import io.javalin.websocket.WsMessageContext;
 import org.bukkit.Bukkit;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitTask;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.logging.Logger;
 
 public class ChatWebSocketController implements ExchangeController<JavalinExchangeServer> {
@@ -86,9 +87,8 @@ public class ChatWebSocketController implements ExchangeController<JavalinExchan
     }
 
     @Override
-    public void register(JavalinExchangeServer server) {
-        final var app = server.provide();
-        app.ws("/chat", config -> {
+    public void register(JavalinDefaultRouting routing) {
+        routing.ws("/chat", config -> {
             config.onConnect(this::onConnect);
             config.onClose(this::onDisconnect);
             config.onMessage(this::onMessage);

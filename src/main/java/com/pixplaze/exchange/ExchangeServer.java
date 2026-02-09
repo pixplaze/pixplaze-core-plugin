@@ -6,6 +6,4 @@ public interface ExchangeServer<S> {
     void stop();
 
     S provide();
-
-    void register();
 }

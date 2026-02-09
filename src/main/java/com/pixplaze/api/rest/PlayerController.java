@@ -1,29 +1,25 @@
 package com.pixplaze.api.rest;
 
-import com.pixplaze.api.dao.PlayerDAO;
+import com.pixplaze.api.dao.MinecraftPlayerDao;
 import com.pixplaze.exchange.ExchangeController;
 import com.pixplaze.exchange.JavalinExchangeServer;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import io.javalin.http.Context;
-import org.bukkit.OfflinePlayer;
+import io.javalin.http.HttpStatus;
+import io.javalin.router.JavalinDefaultRouting;
 import org.bukkit.Server;
-import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static io.javalin.apibuilder.ApiBuilder.get;
-import static io.javalin.apibuilder.ApiBuilder.path;
+import java.util.Optional;
+import java.util.UUID;
 
 public class PlayerController implements ExchangeController<JavalinExchangeServer> {
     private final PixplazeCorePlugin plugin = PixplazeCorePlugin.getInstance();
-    private final PlayerDAO playerDAO = new PlayerDAO();
+    private final MinecraftPlayerDao minecraftPlayerDao = new MinecraftPlayerDao();
     private final Server server = plugin.getServer();
 
     public void getPlayer(Context context) {
         try {
-            var player = playerDAO.getPlayerInfo(UUID.fromString(context.pathParam("uuid")));
+            var player = minecraftPlayerDao.getPlayerInfo(UUID.fromString(context.pathParam("uuid")));
 
             if (player.username() == null) {
                 context.status(404);
@@ -40,21 +36,18 @@ public class PlayerController implements ExchangeController<JavalinExchangeServe
                 .orElse("all");
 
         switch (status) {
-            case "online" -> context.json(playerDAO.getOnlinePlayers()).status(200);
-            case "offline" -> context.json(playerDAO.getOfflinePlayers()).status(200);
-            case "banned" -> context.json(playerDAO.getBannedPlayers()).status(200);
-            case "whitelisted" -> context.json(playerDAO.getWhitelistedPlayers()).status(200);
-            case "all" -> context.json(playerDAO.getAllPlayers()).status(200);
+            case "online" -> context.json(minecraftPlayerDao.getOnlinePlayers()).status(HttpStatus.OK);
+            case "offline" -> context.json(minecraftPlayerDao.getOfflinePlayers()).status(HttpStatus.OK);
+            case "banned" -> context.json(minecraftPlayerDao.getBannedPlayers()).status(HttpStatus.OK);
+            case "whitelisted" -> context.json(minecraftPlayerDao.getWhitelistedPlayers()).status(HttpStatus.OK);
+            case "all" -> context.json(minecraftPlayerDao.getAllPlayers()).status(HttpStatus.OK);
             default -> context.status(400);
         }
     }
 
     @Override
-    public void register(JavalinExchangeServer server) {
-        final var app = server.provide();
-        app.routes(() -> path("/players", () -> {
-            get("/{uuid}", this::getPlayer);
-            get("", this::getPlayers);
-        }));
+    public void register(JavalinDefaultRouting routing) {
+        routing.get("/players/{uuid}", this::getPlayer);
+        routing.get("/players", this::getPlayers);
     }
 }

@@ -1,10 +1,13 @@
 package com.pixplaze.api.rest;
 
-import com.pixplaze.api.dao.ServerDAO;
+import com.pixplaze.api.dao.MinecraftServerDao;
 import com.pixplaze.exchange.ExchangeController;
 import com.pixplaze.exchange.JavalinExchangeServer;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import io.javalin.http.Context;
+import io.javalin.http.HttpStatus;
+import io.javalin.router.JavalinDefaultRouting;
+import org.apache.commons.lang.ObjectUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -13,36 +16,9 @@ import org.bukkit.scheduler.BukkitRunnable;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static io.javalin.apibuilder.ApiBuilder.*;
-
 public class ServerController implements ExchangeController<JavalinExchangeServer> {
     private final PixplazeCorePlugin plugin = PixplazeCorePlugin.getInstance();
-    private final ServerDAO serverDAO = new ServerDAO();
-
-    public void getServer(Context context) {
-        var view = Optional.ofNullable(context.queryParam("view")).orElse("short");
-
-        switch (view) {
-            case "short" -> {
-                context.json(serverDAO.getServerExtendedShortInfo()).status(200);
-            }
-            case "status" -> {
-                context.json(serverDAO.getServerStatusInfo()).status(200);
-            }
-            case "full" -> {
-                context.json(serverDAO.getServerExtendedFullInfo()).status(200);
-            }
-            default -> {
-                context.status(400);
-            }
-        }
-    }
-
-    public void getServerVersion(Context context) {
-        context.result(
-                plugin.getServer().getBukkitVersion()
-        ).status(200);
-    }
+    private final MinecraftServerDao minecraftServerDao = new MinecraftServerDao();
 
     public void getServerWorlds(Context context) {
         context.result("[%s]".formatted(plugin.getServer().getWorlds().stream()
@@ -54,7 +30,6 @@ public class ServerController implements ExchangeController<JavalinExchangeServe
     public void postServerStop(Context context) {
         context.status(200).result("Server stopped");
         execute(plugin, "stop");
-
     }
 
     private void execute(JavaPlugin plugin, String command) {
@@ -77,19 +52,52 @@ public class ServerController implements ExchangeController<JavalinExchangeServe
 
     }
 
-    public void getUniverseEmperor(Context context) {
-        context.result("pidor").status(200);
+    private void handleServerInfoRequest(Context context) {
+        final var retrieveThumbnail = Boolean.parseBoolean(context.queryParam("thumbnail"));
+        context.json(minecraftServerDao.getServerInfo(retrieveThumbnail)).status(HttpStatus.OK);
     }
 
-    public void deleteServerLOL(Context context) {
-        context.status(200);
+    public void handleServerStateRequest(Context context) {
+        context.json(minecraftServerDao.getServerState()).status(HttpStatus.OK);
+    }
+
+    private void handleServerVersionRequest(Context context) {
+        context.json(minecraftServerDao.getServerVersion()).status(HttpStatus.OK);
+    }
+
+    private void handleServerCoreRequest(Context context) {
+        context.json(minecraftServerDao.getServerCore()).status(HttpStatus.OK);
+    }
+
+    private void handleInstalledPluginsRequest(Context context) {
+        context.json(minecraftServerDao.getInstalledPlugins()).status(HttpStatus.OK);
+    }
+
+    private void handleEnabledPluginsRequest(Context context) {
+        context.json(minecraftServerDao.getEnabledPlugins()).status(HttpStatus.OK);
+    }
+
+    private void handlePlayersRequest(Context context) {
+        final var viewMode = (String) ObjectUtils.defaultIfNull(context.queryParam("view"), "all");
+
+        final var players = switch (viewMode) {
+            case "online" -> minecraftServerDao.getOnlinePlayers();
+            case "offline" -> minecraftServerDao.getOfflinePlayers();
+            case "banned" -> minecraftServerDao.getBannedPlayers();
+            case "whitelisted" -> minecraftServerDao.getWhitelistedPlayers();
+            case "operators" -> minecraftServerDao.getOpPlayers();
+            default -> minecraftServerDao.getAllPlayers();
+        };
+
+        context.json(players).status(HttpStatus.OK);
     }
 
     @Override
-    public void register(JavalinExchangeServer server) {
-        final var app = server.provide();
-        app.routes(() -> path("/server", () -> {
-            get("", this::getServer);
-        }));
+    public void register(JavalinDefaultRouting routing) {
+        routing.get("/server", this::handleServerInfoRequest);
+        routing.get("/server/state", this::handleServerStateRequest);
+        routing.get("/server/plugins/installed", this::handleInstalledPluginsRequest);
+        routing.get("/server/plugins/enabled", this::handleEnabledPluginsRequest);
+        routing.get("/server/players", this::handlePlayersRequest);
     }
 }
