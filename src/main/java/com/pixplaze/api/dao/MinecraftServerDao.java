@@ -4,28 +4,24 @@ import com.pixplaze.api.dao.plugin.MinecraftPluginDao;
 import com.pixplaze.api.exception.PixplazeApiException;
 import com.pixplaze.api.ext.MinecraftServerApi;
 import com.pixplaze.api.ext.data.player.MinecraftPlayerInfo;
+import com.pixplaze.api.ext.data.player.MinecraftPlayerListInfo;
 import com.pixplaze.api.ext.data.plugin.MinecraftPluginInfo;
-import com.pixplaze.api.ext.data.server.MinecraftServerCoreInfo;
-import com.pixplaze.api.ext.data.server.MinecraftServerInfo;
-import com.pixplaze.api.ext.data.server.MinecraftServerStateInfo;
+import com.pixplaze.api.ext.data.server.*;
 import com.pixplaze.api.nms.MinecraftServer;
 import com.pixplaze.api.reflection.Reflection;
+import com.pixplaze.api.state.ServerStateSnapshot;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import com.pixplaze.util.ServerFiles;
-import org.bukkit.Bukkit;
 import org.bukkit.Server;
 
 import javax.annotation.Nullable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
-import java.net.Inet4Address;
-import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.List;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -44,42 +40,29 @@ public class MinecraftServerDao implements MinecraftServerApi {
 
     @Override
     public MinecraftServerInfo getServerInfo(boolean retrieveThumbnail) {
-        final var address = getServerAddress();
-        final var port = server.getPort();
-        final var name = server.getMotd();
+        final var hosts = getServerHosts();
+        final var motd = server.getMotd();
         final var license = server.getOnlineMode();
-        final var difficulty = getServerDifficulty();
-        final var hardcore = server.isHardcore();
-        final var whitelist = server.hasWhitelist();
-        final var version = getServerVersion();
-        final var maxPlayers = server.getMaxPlayers();
         final var thumbnail = getServerThumbnail(retrieveThumbnail);
         final var core = minecraftServerCoreDao.getMinecraftCoreInfo();
         final var state = getServerState();
-        final var plugins = getEnabledPluginNames();
+        final var plugins = getEnabledPlugins();
 
 //        testReflection();
-
-        return new MinecraftServerInfo(
-                address,
-                port,
-                name,
-                license,
-                difficulty,
-                hardcore,
-                whitelist,
-                version,
-                maxPlayers,
-                thumbnail,
-                core,
-                state,
-                plugins
-        );
+        return MinecraftServerInfo.builder()
+                .motd(motd)
+                .hosts(hosts)
+                .isLicense(license)
+                .iconBase64(thumbnail)
+                .core(core)
+                .state(state)
+                .plugins(plugins)
+                .build();
     }
 
-    private void testNms() {
-        final var serverPlayer = net.minecraft.server.MinecraftServer.getServer().getPlayerList().getPlayerByName("Emberati");
-    }
+//    private void testNms() {
+//        final var serverPlayer = net.minecraft.server.MinecraftServer.getServer().getPlayerList().getPlayerByName("Emberati");
+//    }
 
     private void testReflection() {
         try {
@@ -100,19 +83,46 @@ public class MinecraftServerDao implements MinecraftServerApi {
         }
     }
 
+    /// Тело heartbeat в web-api ({@link MinecraftServerInfo#heartbeat}): только то, за что отвечает плагин, —
+    /// лицензия и состояние со счётчиками игроков, без списков. {@code ping} — медианный пинг игроков.
+    /// Читает Bukkit API: вызывать из главного потока или там, где это уже допустимо для {@link #getServerState()}.
+    public MinecraftServerInfo getHeartbeatInfo() {
+        return MinecraftServerInfo.heartbeat(
+                server.getOnlineMode(),
+                MinecraftServerStateInfo.heartbeat(
+                        getCurrentTps(),
+                        getMedianPing(),
+                        getCurrentUptime(),
+                        getServerDifficulty(),
+                        getCurrentOnline(),
+                        server.getMaxPlayers()
+                )
+        );
+    }
+
+    /// Полное состояние для собственного REST API плагина: со списками игроков, вайтлиста, банов и операторов.
     @Override
     public MinecraftServerStateInfo getServerState() {
-        final var online = getCurrentOnline();
         final var tps = getCurrentTps();
+        final var ping = getMedianPing();
         final var uptime = getCurrentUptime();
-        final var enabled = true;
 
-        return new MinecraftServerStateInfo(
-                online,
-                tps,
-                uptime,
-                enabled
-        );
+        return MinecraftServerStateInfo.builder()
+                .tps(tps)
+                .ping(ping)
+                .uptime(uptime)
+                .difficulty(getServerDifficulty())
+                .status(MinecraftServerStateInfo.Status.ONLINE)
+                .integrationStatus(MinecraftServerStateInfo.IntegrationStatus.PLUGIN)
+                .players(MinecraftPlayerListInfo.builder()
+                        .max(server.getMaxPlayers())
+                        .online(getCurrentOnline())
+                        .list(getAllPlayers())
+                        .whitelist(getWhitelistedPlayers())
+                        .banned(getBannedPlayers())
+                        .operators(getOpPlayers())
+                        .build())
+                .build();
     }
 
     @Override
@@ -126,37 +136,51 @@ public class MinecraftServerDao implements MinecraftServerApi {
     }
 
     @Override
-    public Set<MinecraftPlayerInfo> getOnlinePlayers() {
+    public List<MinecraftPlayerInfo> getOnlinePlayers() {
         return minecraftPlayerDao.getOnlinePlayers();
     }
 
     @Override
-    public Set<MinecraftPlayerInfo> getOfflinePlayers() {
+    public List<MinecraftPlayerInfo> getOfflinePlayers() {
         return minecraftPlayerDao.getOfflinePlayers();
     }
 
     @Override
-    public Set<MinecraftPlayerInfo> getBannedPlayers() {
+    public List<MinecraftPlayerInfo> getBannedPlayers() {
         return minecraftPlayerDao.getBannedPlayers();
     }
 
     @Override
-    public Set<MinecraftPlayerInfo> getWhitelistedPlayers() {
+    public List<MinecraftPlayerInfo> getWhitelistedPlayers() {
         return minecraftPlayerDao.getWhitelistedPlayers();
     }
 
     @Override
-    public Set<MinecraftPlayerInfo> getOpPlayers() {
+    public List<MinecraftPlayerInfo> getOpPlayers() {
         return minecraftPlayerDao.getOpPlayers();
     }
 
     @Override
-    public Set<MinecraftPlayerInfo> getAllPlayers() {
+    public List<MinecraftPlayerInfo> getAllPlayers() {
         return minecraftPlayerDao.getAllPlayers();
     }
 
     public Integer getCurrentOnline() {
         return server.getOnlinePlayers().size();
+    }
+
+    /// Адреса сервера: игровой (HOST) — публичный домен и порт сервера, API плагина (API) — тот же домен
+    /// и {@code http-listen-port}. Пока домен не определён, адресов нет. Карту (MAP) плагин не объявляет.
+    public List<MinecraftServerHostInfo> getServerHosts() {
+        final var address = getServerAddress();
+        if (address == null) {
+            return List.of();
+        }
+
+        return List.of(
+                new MinecraftServerHostInfo(null, address, server.getPort(), MinecraftServerHostInfo.Type.HOST),
+                new MinecraftServerHostInfo(null, address, plugin.getConfig().getInt("http-listen-port"), MinecraftServerHostInfo.Type.API)
+        );
     }
 
     public Double getCurrentTps() {
@@ -209,12 +233,19 @@ public class MinecraftServerDao implements MinecraftServerApi {
         return server.getWorlds().get(0).getDifficulty().name();
     }
 
+    /// Медианный пинг игроков в миллисекундах. Берём из {@link ServerStateSnapshot}, который
+    /// пересчитывает значение в главном потоке: читать Bukkit API отсюда, из потока Jetty,
+    /// нельзя. {@code null} — если с запуска сервера на него ещё никто не заходил.
+    private Long getMedianPing() {
+        final var snapshot = plugin.getServerStateSnapshot();
+        return snapshot == null ? null : snapshot.getMedianPing();
+    }
+
+    /// Публичный хост сервера — делегируем стратегии, выбранной плагином
+    /// ({@code config → авто-детект по подключениям}). {@code null}, если источник не смог определить.
     private String getServerAddress() {
-        try {
-            return Inet4Address.getLocalHost().getHostAddress();
-        } catch (UnknownHostException e) {
-            return null;
-        }
+        final var resolver = plugin.getServerHostResolver();
+        return resolver == null ? null : resolver.resolve().orElse(null);
     }
 
     public String getServerVersion() {

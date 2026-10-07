@@ -36,25 +36,17 @@ public class JavalinExchangeServer implements ExchangeServer<Javalin> {
         javalin.start(port);
     }
 
+    /// {@code javalin.stop()} синхронный: внутри он зовёт {@code Server.stop()} Jetty,
+    /// который дожидается остановки своих потоков и закрытия соединений. Отдельное
+    /// ожидание не нужно — прежний вариант (фоновый поток со {@code Thread.sleep(1000)})
+    /// ничего не ждал и от ошибки `zip file closed` не спасал.
     @Override
     public void stop() {
         javalin.stop();
-        new Thread(this::awaitForClose).start();
     }
 
     @Override
     public Javalin provide() {
         return javalin;
-    }
-
-    /**
-     * Ожидает закрытия процесса Javalin чтобы не блокировать jar-файл.
-     */
-    private void awaitForClose() {
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
     }
 }

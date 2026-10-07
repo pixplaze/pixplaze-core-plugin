@@ -7,7 +7,6 @@ import com.pixplaze.plugin.PixplazeCorePlugin;
 import io.javalin.http.Context;
 import io.javalin.http.HttpStatus;
 import io.javalin.router.JavalinDefaultRouting;
-import org.apache.commons.lang.ObjectUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -78,7 +77,7 @@ public class ServerController implements ExchangeController<JavalinExchangeServe
     }
 
     private void handlePlayersRequest(Context context) {
-        final var viewMode = (String) ObjectUtils.defaultIfNull(context.queryParam("view"), "all");
+        final var viewMode = Optional.ofNullable(context.queryParam("view")).orElse("all");
 
         final var players = switch (viewMode) {
             case "online" -> minecraftServerDao.getOnlinePlayers();
