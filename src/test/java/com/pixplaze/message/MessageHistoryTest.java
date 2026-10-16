@@ -1,4 +1,4 @@
-package com.pixplaze.rcon;
+package com.pixplaze.message;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -9,10 +9,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class ConsoleHistoryTest {
+class MessageHistoryTest {
 
-    private static ConsoleHistory filled(int capacity, int lines) {
-        final var history = new ConsoleHistory(capacity);
+    private static MessageHistory<String> filled(int capacity, int lines) {
+        final var history = new MessageHistory<String>(capacity);
         for (int i = 1; i <= lines; i++) {
             history.add("line " + i);
         }
@@ -23,14 +23,14 @@ class ConsoleHistoryTest {
     @Test
     @DisplayName("Ёмкость должна быть положительной")
     void rejectsNonPositiveCapacity() {
-        assertThrows(IllegalArgumentException.class, () -> new ConsoleHistory(0));
-        assertThrows(IllegalArgumentException.class, () -> new ConsoleHistory(-1));
+        assertThrows(IllegalArgumentException.class, () -> new MessageHistory<String>(0));
+        assertThrows(IllegalArgumentException.class, () -> new MessageHistory<String>(-1));
     }
 
     @Test
     @DisplayName("Пустая история отдаёт пустые снимки")
     void emptyHistory() {
-        final var history = new ConsoleHistory(4);
+        final var history = new MessageHistory<String>(4);
 
         assertEquals(0, history.size());
         assertEquals(List.of(), history.snapshot());

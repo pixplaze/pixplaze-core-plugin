@@ -1,97 +1,79 @@
 package com.pixplaze.api.websocket;
 
-import com.pixplaze.exchange.ExchangeController;
-import com.pixplaze.exchange.JavalinExchangeServer;
-import com.pixplaze.plugin.PixplazeCorePlugin;
-import com.pixplaze.rcon.ConsoleBuffer;
-import io.javalin.router.JavalinDefaultRouting;
-import io.javalin.websocket.WsCloseContext;
-import io.javalin.websocket.WsConnectContext;
-import io.javalin.websocket.WsContext;
+import com.pixplaze.api.ext.data.message.MinecraftMessageInfo;
+import com.pixplaze.chat.ChatBuffer;
 import io.javalin.websocket.WsMessageContext;
 import org.bukkit.Bukkit;
-import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.entity.Player;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.logging.Logger;
+import java.util.Locale;
+import java.util.stream.Collectors;
 
-public class ChatWebSocketController implements ExchangeController<JavalinExchangeServer> {
+/// Чат ({@code /chat}): видимые всем сообщения чата и команды, доступные обычному игроку.
+///
+/// Пока в websocket нет авторизации, веб-клиент пишет от имени консоли: текст уходит в чат
+/// с префиксом {@value #WEB_PREFIX}, а {@code /msg} и {@code /me} выполняются консолью.
+/// Ответы команд, которые видит только отправитель, приходят ему одному ({@code REPLY}).
+public class ChatWebSocketController extends MessageWebSocketController {
 
-    private static final int MAX_BUFFER_SIZE = 1024;
-    private static final int MAX_CONSOLE_LINES = 50;
-    private static final PixplazeCorePlugin plugin = PixplazeCorePlugin.getInstance();
-    private static final Logger logger = plugin.getLogger();
-    private static int activeConnections = 0;
-    private final Collection<WsContext> contexts = Collections.synchronizedCollection(new ArrayList<>());
-    private final ConsoleBuffer consoleBuffer;
+    /// Предел длины сообщения чата в Minecraft.
+    private static final int MAX_LENGTH = 256;
+    private static final String WEB_PREFIX = "[Web] ";
+    private static final String HELP = "Commands: /msg <player> <message> (/tell, /w), /me <action>, /list, /help";
 
-    public ChatWebSocketController(ConsoleBuffer consoleBuffer) {
-        this.consoleBuffer = consoleBuffer;
-        this.consoleBuffer.addLogEventHandler(this::send);
-    }
+    private final ChatBuffer chatBuffer;
 
-    private void onConnect(WsConnectContext context) {
-        activeConnections++;
-        plugin.getLogger().warning("Active connections: [%2s]".formatted(activeConnections));
-
-        context.send(consoleBuffer.getHistory());
-        contexts.add(context);
-
-        PixplazeCorePlugin.getInstance().getLogger().warning("WS CONNECT");
-    }
-
-    private void onDisconnect(WsCloseContext context) {
-        activeConnections--;
-        context.session.close();
-
-        // Canceling BukkitTask then remove session!!!
-//        contexts.get(context).cancel();
-        contexts.remove(context);
-
-        PixplazeCorePlugin.getInstance().getLogger().warning("WS DISCONNECT");
-    }
-
-    private void onMessage(WsMessageContext context) {
-        var message = context.message();
-        var sender = Bukkit.getConsoleSender();
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                Bukkit.dispatchCommand(sender, message);
-            }
-        }.runTask(plugin);
-    }
-
-    private void send(String message) {
-        contexts.stream()
-                .filter(ctx -> ctx.session.isOpen())
-                .forEach(session -> session.send(message));
-    }
-
-    private void update() {
-//        contexts.keySet().stream()
-//                .filter(ctx -> ctx.session.isOpen())
-//                .forEach(session -> session.send(consoleBuffer.getHistory()));
-//        contexts.forEach((key, value) -> logger.warning(
-//                "[%s]: %s".formatted(
-//                        key.getSessionId(),
-//                        key.session.isOpen() ? "opened" : "closed")
-//        ));
-//        logger.warning("Active sessions: %d".formatted(contexts.size()));
-    }
-
-    private void addSession() {
-
+    public ChatWebSocketController(ChatBuffer chatBuffer) {
+        super("/chat", chatBuffer);
+        this.chatBuffer = chatBuffer;
     }
 
     @Override
-    public void register(JavalinDefaultRouting routing) {
-        routing.ws("/chat", config -> {
-            config.onConnect(this::onConnect);
-            config.onClose(this::onDisconnect);
-            config.onMessage(this::onMessage);
-        });
+    protected void handleMessage(WsMessageContext context, String text) {
+        if (text.length() > MAX_LENGTH) {
+            reply(context, "Message is too long: %d characters, at most %d".formatted(text.length(), MAX_LENGTH));
+            return;
+        }
+        if (!text.startsWith("/")) {
+            runOnMainThread(() -> sendWebMessage(text));
+            return;
+        }
+
+        final var command = text.substring(1).strip();
+        final var label = label(command);
+        switch (label) {
+            // Личное сообщение в общий чат не попадает: ChatBuffer его не ловит
+            case "msg", "tell", "w", "me" -> runOnMainThread(() -> dispatchAsConsole(command));
+            case "list" -> runOnMainThread(() -> reply(context, onlinePlayers()));
+            case "help" -> reply(context, HELP);
+            default -> reply(context, "Unknown command: /%s. Type /help".formatted(label));
+        }
+    }
+
+    /// Сообщение веб-клиента всем игрокам и в лог, от имени консоли. Не через
+    /// {@code Bukkit.broadcastMessage}: его поймал бы {@link ChatBuffer} как {@code BROADCAST},
+    /// а это сообщение — {@code WEB}. Вызывать только в главном потоке.
+    private void sendWebMessage(String text) {
+        final var line = WEB_PREFIX + text;
+        Bukkit.getOnlinePlayers().forEach(player -> player.sendMessage(line));
+        Bukkit.getConsoleSender().sendMessage(line);
+        chatBuffer.add(new MinecraftMessageInfo(
+                MinecraftMessageInfo.Type.WEB, null, null, text, System.currentTimeMillis()));
+    }
+
+    /// Ответ на {@code /list}. Вызывать только в главном потоке.
+    private static String onlinePlayers() {
+        final var players = Bukkit.getOnlinePlayers();
+        final var names = players.stream()
+                .map(Player::getName)
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .collect(Collectors.joining(", "));
+        return "Online %d/%d: %s".formatted(players.size(), Bukkit.getMaxPlayers(), names);
+    }
+
+    /// Метка команды без пространства имён: {@code minecraft:msg Steve hi} → {@code msg}.
+    private static String label(String command) {
+        final var name = command.split("\\s+", 2)[0];
+        return name.substring(name.indexOf(':') + 1).toLowerCase(Locale.ROOT);
     }
 }

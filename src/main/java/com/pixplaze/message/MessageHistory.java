@@ -1,32 +1,32 @@
-package com.pixplaze.rcon;
+package com.pixplaze.message;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 
-/// Кольцевой буфер строк консоли фиксированной ёмкости: при переполнении вытесняется самая
-/// старая строка. Внутри {@link ArrayDeque} — он сам устроен как кольцевой буфер, поэтому
+/// Кольцевой буфер сообщений (строк консоли, сообщений чата) фиксированной ёмкости: при
+/// переполнении вытесняется самое старое. Внутри {@link ArrayDeque} — он сам устроен как кольцевой буфер, поэтому
 /// добавление с вытеснением стоит O(1), а ручной арифметики с индексом головы не требуется.
 ///
 /// Пишет сюда log4j из своих потоков, читают потоки Javalin, поэтому класс синхронизирован
 /// внутри: снимок собирается целиком под замком и наружу отдаётся копия, которую можно
 /// обходить без блокировок. Внешний замок владельцу не нужен.
-public final class ConsoleHistory {
+public final class MessageHistory<T> {
 
-    private final ArrayDeque<String> lines;
+    private final ArrayDeque<T> lines;
     private final int capacity;
 
-    public ConsoleHistory(int capacity) {
+    public MessageHistory(int capacity) {
         if (capacity <= 0) {
             throw new IllegalArgumentException(
-                    "Console history capacity must be positive, got %d".formatted(capacity));
+                    "Message history capacity must be positive, got %d".formatted(capacity));
         }
 
         this.capacity = capacity;
         this.lines = new ArrayDeque<>(capacity);
     }
 
-    public synchronized void add(String line) {
+    public synchronized void add(T line) {
         if (lines.size() >= capacity) {
             lines.pollFirst();
         }
@@ -35,7 +35,7 @@ public final class ConsoleHistory {
     }
 
     /// Вся история, от самой старой строки к самой новой.
-    public synchronized List<String> snapshot() {
+    public synchronized List<T> snapshot() {
         return new ArrayList<>(lines);
     }
 
@@ -44,7 +44,7 @@ public final class ConsoleHistory {
     /// {@code count < 0} — вся история, кроме {@code |count|} самых старых строк;
     /// {@code count == 0} — пустой список.
     /// Значение больше объёма истории отдаёт её целиком.
-    public synchronized List<String> snapshot(int count) {
+    public synchronized List<T> snapshot(int count) {
         final var all = new ArrayList<>(lines);
 
         if (count < 0) {

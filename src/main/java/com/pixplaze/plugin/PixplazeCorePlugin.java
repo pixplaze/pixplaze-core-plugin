@@ -3,6 +3,7 @@ package com.pixplaze.plugin;
 import com.pixplaze.api.host.ServerHostResolver;
 import com.pixplaze.api.host.ServerHostResolvers;
 import com.pixplaze.api.state.ServerStateSnapshot;
+import com.pixplaze.chat.ChatBuffer;
 import com.pixplaze.exchange.ExchangeServer;
 import com.pixplaze.exchange.JavalinExchangeServer;
 import com.pixplaze.rcon.ConsoleBuffer;
@@ -16,6 +17,7 @@ public final class PixplazeCorePlugin extends JavaPlugin {
 
     private static PixplazeCorePlugin instance;
     private ConsoleBuffer consoleBuffer;
+    private ChatBuffer chatBuffer;
     private ExchangeServer<Javalin> exchangeServer;
     private ServerHostResolver serverHostResolver;
     private ServerStateSnapshot serverStateSnapshot;
@@ -32,7 +34,7 @@ public final class PixplazeCorePlugin extends JavaPlugin {
     public void onEnable() {
         instance = this;
         saveDefaultConfig();
-        initConsoleBuffer();
+        initMessageBuffers();
         // До HTTP-сервера: контроллеры и DAO создаются при монтировании маршрутов
         // и рассчитывают, что снимок уже есть.
         initServerStateSnapshot();
@@ -40,14 +42,17 @@ public final class PixplazeCorePlugin extends JavaPlugin {
         initServerHostResolver();
     }
 
-    /// Порядок важен: сначала отцепляемся от log4j (его конфигурация живёт дольше плагина),
+    /// Порядок важен: сначала отцепляемся от log4j и событий Bukkit (они живут дольше плагина),
     /// затем останавливаем HTTP-сервер и задачу обновления снимка, затем отпускаем
     /// статическую ссылку на плагин. Всё вместе гарантирует, что после выгрузки на классы
     /// плагина никто не ссылается, и обращений к закрытому jar не будет.
     @Override
     public void onDisable() {
         Optional.ofNullable(consoleBuffer)
-                .ifPresent(ConsoleBuffer::detachLogger);
+                .ifPresent(ConsoleBuffer::detach);
+
+        Optional.ofNullable(chatBuffer)
+                .ifPresent(ChatBuffer::detach);
 
         Optional.ofNullable(exchangeServer)
                 .ifPresent(ExchangeServer::stop);
@@ -60,6 +65,10 @@ public final class PixplazeCorePlugin extends JavaPlugin {
 
     public ConsoleBuffer getConsoleBuffer() {
         return consoleBuffer;
+    }
+
+    public ChatBuffer getChatBuffer() {
+        return chatBuffer;
     }
 
     /// Резолвер публичного хоста сервера. Реализация выбрана {@link ServerHostResolvers}
@@ -83,9 +92,13 @@ public final class PixplazeCorePlugin extends JavaPlugin {
         serverStateSnapshot.start();
     }
 
-    private void initConsoleBuffer() {
+    /// Лог сервера и видимый всем чат — источники websocket-потоков {@code /console} и {@code /chat}.
+    private void initMessageBuffers() {
         consoleBuffer = new ConsoleBuffer();
-        consoleBuffer.attachLogger();
+        consoleBuffer.attach();
+
+        chatBuffer = new ChatBuffer(this);
+        chatBuffer.attach();
     }
 
     /**<pre>

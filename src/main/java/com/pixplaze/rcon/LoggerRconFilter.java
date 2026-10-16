@@ -1,5 +1,6 @@
 package com.pixplaze.rcon;
 
+import com.pixplaze.api.ext.data.message.MinecraftMessageInfo;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.core.LogEvent;
@@ -14,17 +15,20 @@ public class LoggerRconFilter extends AbstractFilter {
         this.consoleBuffer = consoleBuffer;
     }
 
+    /// Строка лога как есть: автор — короткое имя логгера (последний сегмент), текст — сообщение
+    /// с кодами форматирования, время — момент события log4j.
     @Override
     public Result filter(LogEvent event) {
-        var line = "";
-
-        var loggerFullName = event.getLoggerName().split("\\.");
-        var loggerName = loggerFullName[loggerFullName.length - 1];
-        if (loggerName != null) {
-            line = "[" + loggerName + "] ";
-        }
-        line += event.getMessage().getFormattedMessage();
-        consoleBuffer.add(line);
+        final var loggerName = event.getLoggerName();
+        final var author = loggerName == null || loggerName.isEmpty()
+                ? null
+                : loggerName.substring(loggerName.lastIndexOf('.') + 1);
+        consoleBuffer.add(new MinecraftMessageInfo(
+                MinecraftMessageInfo.Type.CONSOLE,
+                author,
+                null,
+                event.getMessage().getFormattedMessage(),
+                event.getTimeMillis()));
 
         return isLoggable(event.getMessage().getFormattedMessage());
     }

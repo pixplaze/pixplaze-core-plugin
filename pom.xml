@@ -9,7 +9,7 @@
     <groupId>com.pixplaze.plugin</groupId>
     <artifactId>pixplaze-core-plugin</artifactId>
 
-    <version>1.0.1</version>
+    <version>1.0.2</version>
 
     <properties>
         <java.version>17</java.version>
@@ -91,7 +91,7 @@
         <dependency>
             <groupId>com.pixplaze.api</groupId>
             <artifactId>pixplaze-ext-api</artifactId>
-            <version>1.0.1</version>
+            <version>1.0.2</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
