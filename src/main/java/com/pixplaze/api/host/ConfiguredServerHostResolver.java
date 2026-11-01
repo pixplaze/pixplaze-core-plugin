@@ -20,10 +20,8 @@ public final class ConfiguredServerHostResolver implements ServerHostResolver {
     }
 
     @Override
-    public Optional<String> resolve() {
-        return Optional.ofNullable(plugin.getConfig().getString(configPath))
-                .map(String::trim)
-                .filter(host -> !host.isBlank());
+    public Optional<HostAddress> resolve() {
+        return HostAddress.parse(plugin.getConfig().getString(configPath));
     }
 
     @Override

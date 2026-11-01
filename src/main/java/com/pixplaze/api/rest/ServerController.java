@@ -1,5 +1,6 @@
 package com.pixplaze.api.rest;
 
+import com.pixplaze.api.dao.MinecraftPlayerDao;
 import com.pixplaze.api.dao.MinecraftServerDao;
 import com.pixplaze.exchange.ExchangeController;
 import com.pixplaze.exchange.JavalinExchangeServer;
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 public class ServerController implements ExchangeController<JavalinExchangeServer> {
     private final PixplazeCorePlugin plugin = PixplazeCorePlugin.getInstance();
     private final MinecraftServerDao minecraftServerDao = new MinecraftServerDao();
+    private final MinecraftPlayerDao minecraftPlayerDao = new MinecraftPlayerDao();
 
     public void getServerWorlds(Context context) {
         context.result("[%s]".formatted(plugin.getServer().getWorlds().stream()
@@ -80,12 +82,12 @@ public class ServerController implements ExchangeController<JavalinExchangeServe
         final var viewMode = Optional.ofNullable(context.queryParam("view")).orElse("all");
 
         final var players = switch (viewMode) {
-            case "online" -> minecraftServerDao.getOnlinePlayers();
-            case "offline" -> minecraftServerDao.getOfflinePlayers();
-            case "banned" -> minecraftServerDao.getBannedPlayers();
-            case "whitelisted" -> minecraftServerDao.getWhitelistedPlayers();
-            case "operators" -> minecraftServerDao.getOpPlayers();
-            default -> minecraftServerDao.getAllPlayers();
+            case "online" -> minecraftPlayerDao.getOnlinePlayers();
+            case "offline" -> minecraftPlayerDao.getOfflinePlayers();
+            case "banned" -> minecraftPlayerDao.getBannedPlayers();
+            case "whitelisted" -> minecraftPlayerDao.getWhitelistedPlayers();
+            case "operators" -> minecraftPlayerDao.getOpPlayers();
+            default -> minecraftPlayerDao.getAllPlayers();
         };
 
         context.json(players).status(HttpStatus.OK);

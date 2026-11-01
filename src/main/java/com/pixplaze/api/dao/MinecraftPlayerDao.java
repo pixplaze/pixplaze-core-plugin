@@ -1,22 +1,16 @@
 package com.pixplaze.api.dao;
 
-//import com.mojang.authlib.properties.Property;
 import com.pixplaze.api.ext.data.player.MinecraftPlayerInfo;
 import com.pixplaze.plugin.PixplazeCorePlugin;
-//import net.minecraft.network.protocol.game.ClientboundPlayerInfoRemovePacket;
-//import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
-//import net.minecraft.network.protocol.game.ClientboundRespawnPacket;
-//import net.minecraft.server.MinecraftServer;
-//import net.minecraft.server.level.ServerPlayer;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Server;
 import org.bukkit.Statistic;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import javax.annotation.Nonnull;
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 
 public class MinecraftPlayerDao {
 
@@ -49,39 +43,54 @@ public class MinecraftPlayerDao {
 
     public List<MinecraftPlayerInfo> getOnlinePlayers() {
         return server.getOnlinePlayers().stream()
+                .filter(MinecraftPlayerDao::isNamed)
                 .map(this::getPlayerInfo)
-                .collect(Collectors.toUnmodifiableList());
+                .toList();
+    }
+
+    /// Ники игроков в сети без учёта регистра по алфавиту — без статистики и проверок, как у
+    /// [#getOnlinePlayers]. Читает Bukkit API: вызывать из главного потока.
+    public List<String> getOnlinePlayerNames() {
+        return server.getOnlinePlayers().stream()
+                .map(OfflinePlayer::getName)
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .toList();
     }
 
     public List<MinecraftPlayerInfo> getOfflinePlayers() {
         return Arrays.stream(server.getOfflinePlayers())
+                .filter(MinecraftPlayerDao::isNamed)
                 .map(this::getPlayerInfo)
                 .filter(this::isPlayerOffline)
-                .collect(Collectors.toUnmodifiableList());
+                .toList();
     }
 
     public List<MinecraftPlayerInfo> getBannedPlayers() {
         return server.getBannedPlayers().stream()
+                .filter(MinecraftPlayerDao::isNamed)
                 .map(this::getPlayerInfo)
-                .collect(Collectors.toUnmodifiableList());
+                .toList();
     }
 
     public List<MinecraftPlayerInfo> getWhitelistedPlayers() {
         return server.getWhitelistedPlayers().stream()
+                .filter(MinecraftPlayerDao::isNamed)
                 .map(this::getPlayerInfo)
-                .collect(Collectors.toUnmodifiableList());
+                .toList();
     }
 
     public List<MinecraftPlayerInfo> getOpPlayers() {
         return server.getOperators().stream()
+                .filter(MinecraftPlayerDao::isNamed)
                 .map(this::getPlayerInfo)
-                .collect(Collectors.toUnmodifiableList());
+                .toList();
     }
 
     public List<MinecraftPlayerInfo> getAllPlayers() {
         return Arrays.stream(server.getOfflinePlayers())
+                .filter(MinecraftPlayerDao::isNamed)
                 .map(this::getPlayerInfo)
-                .collect(Collectors.toUnmodifiableList());
+                .toList();
     }
 
 //    public Property getTexturesProperty() {
@@ -167,5 +176,10 @@ public class MinecraftPlayerDao {
 
     private boolean isPlayerOffline(MinecraftPlayerInfo p) {
         return !p.isOnline();
+    }
+    /// Bukkit knows no nickname of a player it has no fresh name cache or player data for (an expired
+    /// usercache.json entry, an op who never joined): such a player cannot be shown or stored by name.
+    private static boolean isNamed(OfflinePlayer player) {
+        return player.getName() != null && !player.getName().isBlank();
     }
 }

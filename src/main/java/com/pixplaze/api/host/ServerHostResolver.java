@@ -9,9 +9,9 @@ import java.util.Optional;
 /// фабрикой {@link ServerHostResolvers} в зависимости от условий окружения.
 public interface ServerHostResolver {
 
-    /// @return публичный хост (домен без порта), либо {@link Optional#empty()},
-    ///         если данный источник хост определить не смог.
-    Optional<String> resolve();
+    /// @return публичный адрес (домен и, если источник его знает, внешний порт), либо {@link Optional#empty()},
+    ///         если данный источник адрес определить не смог.
+    Optional<HostAddress> resolve();
 
     /// Человекочитаемое имя источника — для логов/диагностики.
     default String source() {

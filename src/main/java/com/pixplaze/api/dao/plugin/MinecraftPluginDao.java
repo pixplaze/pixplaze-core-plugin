@@ -11,10 +11,7 @@ import java.io.*;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Collectors;
@@ -92,16 +89,7 @@ public class MinecraftPluginDao {
             }
         }
 
-        // Преобразуем хэш в шестнадцатеричную строку
-        StringBuilder hexString = new StringBuilder();
-        for (byte b : digest.digest()) {
-            String hex = Integer.toHexString(0xFF & b);
-            if (hex.length() == 1) {
-                hexString.append('0');
-            }
-            hexString.append(hex);
-        }
-        return hexString.toString();
+        return HexFormat.of().formatHex(digest.digest());
     }
 
     private boolean isJarFile(File file) {

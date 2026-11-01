@@ -10,8 +10,8 @@ import java.io.File;
 /// - {@code spigot.yml} -> {@code settings.bungeecord} (BungeeCord/Waterfall);
 /// - {@code config/paper-global.yml} -> {@code proxies.velocity.enabled} (Velocity, Paper).
 ///
-/// Используется только для предупреждения оператору — не критичный путь: даже если
-/// детект ошибётся, поведение резолвера определяется реально приходящими адресами.
+/// Используется для предупреждения оператору (резолвер хоста определяется реально приходящими
+/// адресами) и для лицензии сервера ({@link ServerLicense}): сервер за прокси считается нелицензионным.
 public final class ProxyDetector {
 
     private ProxyDetector() {

@@ -2,6 +2,8 @@ package com.pixplaze.api.dao;
 
 import com.pixplaze.api.dao.plugin.MinecraftPluginDao;
 import com.pixplaze.api.exception.PixplazeApiException;
+import com.pixplaze.api.host.HostAddress;
+import com.pixplaze.api.host.ServerLicense;
 import com.pixplaze.api.ext.MinecraftServerApi;
 import com.pixplaze.api.ext.data.player.MinecraftPlayerInfo;
 import com.pixplaze.api.ext.data.player.MinecraftPlayerListInfo;
@@ -11,6 +13,7 @@ import com.pixplaze.api.nms.MinecraftServer;
 import com.pixplaze.api.reflection.Reflection;
 import com.pixplaze.api.state.ServerStateSnapshot;
 import com.pixplaze.plugin.PixplazeCorePlugin;
+import com.pixplaze.plugin.PluginConfig;
 import com.pixplaze.util.ServerFiles;
 import org.bukkit.Server;
 
@@ -21,7 +24,9 @@ import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -42,7 +47,7 @@ public class MinecraftServerDao implements MinecraftServerApi {
     public MinecraftServerInfo getServerInfo(boolean retrieveThumbnail) {
         final var hosts = getServerHosts();
         final var motd = server.getMotd();
-        final var license = server.getOnlineMode();
+        final var license = ServerLicense.isLicensed(server);
         final var thumbnail = getServerThumbnail(retrieveThumbnail);
         final var core = minecraftServerCoreDao.getMinecraftCoreInfo();
         final var state = getServerState();
@@ -83,20 +88,24 @@ public class MinecraftServerDao implements MinecraftServerApi {
         }
     }
 
-    /// Тело heartbeat в web-api ({@link MinecraftServerInfo#heartbeat}): только то, за что отвечает плагин, —
-    /// лицензия и состояние со счётчиками игроков, без списков. {@code ping} — медианный пинг игроков.
-    /// Читает Bukkit API: вызывать из главного потока или там, где это уже допустимо для {@link #getServerState()}.
-    public MinecraftServerInfo getHeartbeatInfo() {
-        return MinecraftServerInfo.heartbeat(
-                server.getOnlineMode(),
+    /// Тело heartbeat в web-api ({@link MinecraftServerHeartbeatInfo}): только то, за что отвечает плагин, —
+    /// лицензия, состояние со счётчиками игроков и снимок игроков с его хешем. {@code ping} — медианный
+    /// пинг игроков. Список здесь есть всегда; отправлять ли его, решает отправитель по хешу.
+    /// Читает Bukkit API: вызывать из главного потока.
+    public MinecraftServerHeartbeatInfo getHeartbeatInfo() {
+        final var players = PlayerSnapshots.of(server.getOnlinePlayers());
+        return new MinecraftServerHeartbeatInfo(
+                ServerLicense.isLicensed(server),
                 MinecraftServerStateInfo.heartbeat(
                         getCurrentTps(),
                         getMedianPing(),
                         getCurrentUptime(),
                         getServerDifficulty(),
                         getCurrentOnline(),
-                        server.getMaxPlayers()
-                )
+                        getMaxPlayers()
+                ),
+                PlayerSnapshots.hash(players),
+                players
         );
     }
 
@@ -115,12 +124,12 @@ public class MinecraftServerDao implements MinecraftServerApi {
                 .status(MinecraftServerStateInfo.Status.ONLINE)
                 .integrationStatus(MinecraftServerStateInfo.IntegrationStatus.PLUGIN)
                 .players(MinecraftPlayerListInfo.builder()
-                        .max(server.getMaxPlayers())
+                        .max(getMaxPlayers())
                         .online(getCurrentOnline())
-                        .list(getAllPlayers())
-                        .whitelist(getWhitelistedPlayers())
-                        .banned(getBannedPlayers())
-                        .operators(getOpPlayers())
+                        .list(minecraftPlayerDao.getAllPlayers())
+                        .whitelist(minecraftPlayerDao.getWhitelistedPlayers())
+                        .banned(minecraftPlayerDao.getBannedPlayers())
+                        .operators(minecraftPlayerDao.getOpPlayers())
                         .build())
                 .build();
     }
@@ -135,6 +144,7 @@ public class MinecraftServerDao implements MinecraftServerApi {
         return minecraftPluginDao.getEnabledPlugins();
     }
 
+    // Списки игроков — из MinecraftPlayerDao; здесь только ради контракта MinecraftServerApi
     @Override
     public List<MinecraftPlayerInfo> getOnlinePlayers() {
         return minecraftPlayerDao.getOnlinePlayers();
@@ -169,18 +179,33 @@ public class MinecraftServerDao implements MinecraftServerApi {
         return server.getOnlinePlayers().size();
     }
 
+    public int getMaxPlayers() {
+        return server.getMaxPlayers();
+    }
+
     /// Адреса сервера: игровой (HOST) — публичный домен и порт сервера, API плагина (API) — тот же домен
     /// и {@code http-listen-port}. Пока домен не определён, адресов нет. Карту (MAP) плагин не объявляет.
+    /// Публичные адреса сервера (как к нему приходят снаружи), п. «конфиг» плагина:
+    /// - HOST — {@code public.host}, иначе домен и порт из входов игроков; порт по умолчанию — {@code server-port};
+    /// - API — {@code public.api}, иначе адрес сервера и {@code http.port}; адрес неизвестен — пустой
+    ///   (при регистрации Pixplaze подставит адрес из заявки);
+    /// - MAP — только {@code public.map} с портом.
     public List<MinecraftServerHostInfo> getServerHosts() {
-        final var address = getServerAddress();
-        if (address == null) {
-            return List.of();
-        }
+        final var config = plugin.getConfig();
+        final var game = getServerAddress();
+        final var httpPort = config.getInt(PluginConfig.HTTP_PORT, 25566);
+        final var hosts = new ArrayList<MinecraftServerHostInfo>();
 
-        return List.of(
-                new MinecraftServerHostInfo(null, address, server.getPort(), MinecraftServerHostInfo.Type.HOST),
-                new MinecraftServerHostInfo(null, address, plugin.getConfig().getInt("http-listen-port"), MinecraftServerHostInfo.Type.API)
-        );
+        game.ifPresent(address -> hosts.add(MinecraftServerHostInfo.server(address.host(), address.portOr(server.getPort()))));
+
+        final var api = HostAddress.parse(config.getString(PluginConfig.PUBLIC_API))
+                .orElseGet(() -> new HostAddress(game.map(HostAddress::host).orElse(""), null));
+        hosts.add(new MinecraftServerHostInfo(null, api.host(), api.portOr(httpPort), MinecraftServerHostInfo.Type.API));
+
+        HostAddress.parse(config.getString(PluginConfig.PUBLIC_MAP))
+                .filter(address -> address.port() != null)
+                .ifPresent(address -> hosts.add(new MinecraftServerHostInfo(null, address.host(), address.port(), MinecraftServerHostInfo.Type.MAP)));
+        return hosts;
     }
 
     public Double getCurrentTps() {
@@ -241,11 +266,11 @@ public class MinecraftServerDao implements MinecraftServerApi {
         return snapshot == null ? null : snapshot.getMedianPing();
     }
 
-    /// Публичный хост сервера — делегируем стратегии, выбранной плагином
-    /// ({@code config → авто-детект по подключениям}). {@code null}, если источник не смог определить.
-    private String getServerAddress() {
+    /// Публичный адрес сервера — делегируем стратегии, выбранной плагином
+    /// ({@code public.host → авто-детект по подключениям}).
+    private Optional<HostAddress> getServerAddress() {
         final var resolver = plugin.getServerHostResolver();
-        return resolver == null ? null : resolver.resolve().orElse(null);
+        return resolver == null ? Optional.empty() : resolver.resolve();
     }
 
     public String getServerVersion() {

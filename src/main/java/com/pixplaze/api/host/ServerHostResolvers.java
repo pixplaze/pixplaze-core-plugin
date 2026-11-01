@@ -1,21 +1,22 @@
 package com.pixplaze.api.host;
 
 import com.pixplaze.plugin.PixplazeCorePlugin;
+import com.pixplaze.plugin.PluginConfig;
 
 /// Фабрика {@link ServerHostResolver}: выбирает реализацию в зависимости от условий окружения.
 ///
 /// Логика выбора:
-/// 1. задан {@code server-host} в конфиге -> {@link ConfiguredServerHostResolver}
+/// 1. задан {@code public.host} в конфиге -> {@link ConfiguredServerHostResolver}
 ///    (авторитетно, слушать подключения не нужно);
 /// 2. иначе -> {@link ConfiguredServerHostResolver} поверх {@link ConnectionFrequencyHostResolver}
 ///    (конфиг всё ещё победит, если его зададут позже; иначе — автоопределение по подключениям).
 ///    Частотный резолвер регистрируется как listener.
 ///
 /// Если при этом детектится прокси, а конфиг пуст — печатает предупреждение: за Velocity/без
-/// forwarding автоопределение хост не найдёт, и {@code server-host} придётся задать вручную.
+/// forwarding автоопределение хост не найдёт, и {@code public.host} придётся задать вручную.
 public final class ServerHostResolvers {
 
-    public static final String CONFIG_PATH = "server-host";
+    public static final String CONFIG_PATH = PluginConfig.PUBLIC_HOST;
 
     private ServerHostResolvers() {
     }

@@ -25,6 +25,24 @@ public final class HostNames {
     private HostNames() {
     }
 
+    /// Порт из handshake ({@code host:port}) — внешний порт, по которому зашёл игрок.
+    public static Optional<Integer> port(String raw) {
+        if (raw == null) {
+            return Optional.empty();
+        }
+        final String host = raw.split(FORWARDING_SEPARATOR)[0].trim();
+        final int colon = host.lastIndexOf(':');
+        if (colon <= 0) {
+            return Optional.empty();
+        }
+        try {
+            final int port = Integer.parseInt(host.substring(colon + 1));
+            return port >= 1 && port <= 65535 ? Optional.of(port) : Optional.empty();
+        } catch (NumberFormatException e) {
+            return Optional.empty();
+        }
+    }
+
     public static Optional<String> normalize(String raw) {
         if (raw == null) {
             return Optional.empty();

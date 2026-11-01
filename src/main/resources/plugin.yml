@@ -4,3 +4,8 @@ main: com.pixplaze.plugin.PixplazeCorePlugin
 api-version: 1.18
 authors: [ pazik98, emberati ]
 load: STARTUP
+
+commands:
+  pixplaze:
+    description: Pixplaze account of the player
+    usage: /<command> login|connect

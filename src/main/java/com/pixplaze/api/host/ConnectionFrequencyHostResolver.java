@@ -10,6 +10,7 @@ import org.bukkit.event.player.PlayerLoginEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -18,10 +19,11 @@ import java.util.concurrent.ConcurrentHashMap;
 /// Автоопределение хоста по частоте адресов, которые игроки использовали в handshake.
 ///
 /// Слушает {@link PlayerLoginEvent}, нормализует {@code getHostname()} через
-/// {@link HostNames} и копит счётчики; {@link #resolve()} возвращает самый частый домен
-/// (mode). Покрывает прямые серверы и BungeeCord (legacy forwarding). За Velocity/без
+/// {@link HostNames} и копит счётчики пар «домен:порт»; {@link #resolve()} возвращает самый частый
+/// домен и самый частый порт, с которым на него заходили. Порт из handshake — внешний: за NAT или
+/// прокси он отличается от {@code server-port}, который сервер слушает изнутри. Покрывает прямые серверы и BungeeCord (legacy forwarding). За Velocity/без
 /// forwarding в handshake публичного домена нет — тогда валидных значений не набирается
-/// и {@link #resolve()} вернёт {@link Optional#empty()} (нужен {@code server-host} в конфиге).
+/// и {@link #resolve()} вернёт {@link Optional#empty()} (нужен {@code public.host} в конфиге).
 ///
 /// Счётчики персистятся в {@code <dataFolder>/host-stats.yml}, чтобы переживать рестарты.
 public final class ConnectionFrequencyHostResolver implements ServerHostResolver, Listener {
@@ -41,16 +43,32 @@ public final class ConnectionFrequencyHostResolver implements ServerHostResolver
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerLogin(PlayerLoginEvent event) {
         HostNames.normalize(event.getHostname()).ifPresent(host -> {
-            counts.merge(host, 1L, Long::sum);
+            final var key = HostNames.port(event.getHostname()).map(port -> host + ":" + port).orElse(host);
+            counts.merge(key, 1L, Long::sum);
             saveAsync();
         });
     }
 
+    /// Домен — самый частый по всем записям (в том числе старым, без порта), порт — самый частый среди
+    /// записей этого домена с портом.
     @Override
-    public Optional<String> resolve() {
-        return counts.entrySet().stream()
+    public Optional<HostAddress> resolve() {
+        final var byHost = new HashMap<String, Long>();
+        final var byAddress = new HashMap<HostAddress, Long>();
+        counts.forEach((key, count) -> HostAddress.parse(key).ifPresent(address -> {
+            byHost.merge(address.host(), count, Long::sum);
+            if (address.port() != null) {
+                byAddress.merge(address, count, Long::sum);
+            }
+        }));
+        return byHost.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey);
+                .map(Map.Entry::getKey)
+                .map(host -> byAddress.entrySet().stream()
+                        .filter(entry -> entry.getKey().host().equals(host))
+                        .max(Map.Entry.comparingByValue())
+                        .map(Map.Entry::getKey)
+                        .orElse(new HostAddress(host, null)));
     }
 
     @Override

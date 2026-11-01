@@ -16,7 +16,7 @@ public final class CompositeServerHostResolver implements ServerHostResolver {
     }
 
     @Override
-    public Optional<String> resolve() {
+    public Optional<HostAddress> resolve() {
         for (final var delegate : delegates) {
             final var host = delegate.resolve();
             if (host.isPresent()) {

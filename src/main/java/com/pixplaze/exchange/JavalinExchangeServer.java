@@ -4,6 +4,7 @@ import com.pixplaze.api.rest.PlayerController;
 import com.pixplaze.api.rest.ServerController;
 import com.pixplaze.api.websocket.ChatWebSocketController;
 import com.pixplaze.api.websocket.ConsoleWebSocketController;
+import com.pixplaze.auth.PluginTokenVerifier;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import io.javalin.Javalin;
 import io.javalin.config.JavalinConfig;
@@ -24,21 +25,30 @@ public class JavalinExchangeServer implements ExchangeServer<Javalin> {
     private static final Duration WS_WRITE_TIMEOUT = Duration.ofSeconds(30);
 
     private final Javalin javalin;
+    private final String host;
     private final int port;
+    private final ConsoleWebSocketController console;
+    private final ChatWebSocketController chat;
 
-    public JavalinExchangeServer(int port) {
-        this.javalin = initializeJavalin();
+    /// @param host     интерфейс, на котором слушать; {@code null} — все
+    /// @param verifier проверка входящих токенов: все REST-маршруты и WebSocket требуют токен
+    public JavalinExchangeServer(String host, int port, PluginTokenVerifier verifier) {
+        this.host = host;
         this.port = port;
+        this.console = new ConsoleWebSocketController(PixplazeCorePlugin.getInstance().getConsoleBuffer(), verifier);
+        this.chat = new ChatWebSocketController(PixplazeCorePlugin.getInstance().getChatBuffer(), verifier);
+        this.javalin = initializeJavalin(new AccessFilter(verifier, PixplazeCorePlugin.getInstance().getLogger()));
     }
 
-    private Javalin initializeJavalin() {
+    private Javalin initializeJavalin(AccessFilter accessFilter) {
         return Javalin.create(config -> {
             config.showJavalinBanner = false;
             config.router.ignoreTrailingSlashes = true;
+            config.router.mount(routing -> routing.before(accessFilter::handle));
             config.router.mount(new PlayerController()::register);
             config.router.mount(new ServerController()::register);
-            config.router.mount(new ConsoleWebSocketController(PixplazeCorePlugin.getInstance().getConsoleBuffer())::register);
-            config.router.mount(new ChatWebSocketController(PixplazeCorePlugin.getInstance().getChatBuffer())::register);
+            config.router.mount(console::register);
+            config.router.mount(chat::register);
             config.jsonMapper(new JavalinGsonWrapper());
             config.jetty.modifyWebSocketServletFactory(JavalinExchangeServer::limitOutgoing);
         });
@@ -59,7 +69,11 @@ public class JavalinExchangeServer implements ExchangeServer<Javalin> {
 
     @Override
     public void start() {
-        javalin.start(port);
+        if (host == null) {
+            javalin.start(port);
+        } else {
+            javalin.start(host, port);
+        }
     }
 
     /// {@code javalin.stop()} синхронный: внутри он зовёт {@code Server.stop()} Jetty,
@@ -69,6 +83,8 @@ public class JavalinExchangeServer implements ExchangeServer<Javalin> {
     @Override
     public void stop() {
         javalin.stop();
+        console.stop();
+        chat.stop();
     }
 
     @Override
