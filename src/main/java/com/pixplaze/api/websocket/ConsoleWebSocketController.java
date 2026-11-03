@@ -3,7 +3,7 @@ package com.pixplaze.api.websocket;
 import com.pixplaze.auth.PluginAccess;
 import com.pixplaze.auth.PluginTokenVerifier;
 import com.pixplaze.auth.VerifiedToken;
-import com.pixplaze.rcon.ConsoleBuffer;
+import com.pixplaze.message.ConsoleBuffer;
 import io.javalin.websocket.WsMessageContext;
 
 /// Консоль администратора ({@code /console}): лог сервера и выполнение любых консольных команд.

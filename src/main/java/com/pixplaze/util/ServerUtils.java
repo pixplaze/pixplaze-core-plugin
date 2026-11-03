@@ -1,20 +1,13 @@
-package com.pixplaze.api.host;
+package com.pixplaze.util;
 
+import org.bukkit.Server;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 
-/// Best-effort определение, работает ли сервер за прокси, по конфигам ядра.
-///
-/// Читает файлы из рабочего каталога сервера:
-/// - {@code spigot.yml} -> {@code settings.bungeecord} (BungeeCord/Waterfall);
-/// - {@code config/paper-global.yml} -> {@code proxies.velocity.enabled} (Velocity, Paper).
-///
-/// Используется для предупреждения оператору (резолвер хоста определяется реально приходящими
-/// адресами) и для лицензии сервера ({@link ServerLicense}): сервер за прокси считается нелицензионным.
-public final class ProxyDetector {
-
-    private ProxyDetector() {
+public class ServerUtils {
+    public static boolean isLicensed(Server server) {
+        return server.getOnlineMode() && !isProxied();
     }
 
     public static boolean isProxied() {

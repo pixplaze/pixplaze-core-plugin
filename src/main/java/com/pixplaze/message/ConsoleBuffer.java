@@ -1,6 +1,5 @@
-package com.pixplaze.rcon;
+package com.pixplaze.message;
 
-import com.pixplaze.message.MessageBuffer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.LoggerConfig;

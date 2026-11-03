@@ -4,16 +4,17 @@ import com.pixplaze.api.host.ServerHostResolver;
 import com.pixplaze.api.host.ServerHostResolvers;
 import com.pixplaze.api.state.ServerStateSnapshot;
 import com.pixplaze.auth.PluginTokenVerifier;
-import com.pixplaze.chat.ChatBuffer;
+import com.pixplaze.message.ChatBuffer;
 import com.pixplaze.exchange.ExchangeServer;
 import com.pixplaze.exchange.JavalinExchangeServer;
-import com.pixplaze.rcon.ConsoleBuffer;
+import com.pixplaze.message.ConsoleBuffer;
 import com.pixplaze.webapi.AuthorizationGate;
 import com.pixplaze.webapi.AuthorizationSettings;
 import com.pixplaze.webapi.PixplazeCommand;
 import com.pixplaze.webapi.PixplazeConnection;
 import com.pixplaze.webapi.PlayerAuthorizationListener;
 import io.javalin.Javalin;
+import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Objects;
@@ -59,10 +60,22 @@ public final class PixplazeCorePlugin extends JavaPlugin {
     /// С {@code authorization.enabled} (на нелицензионном сервере — всегда) игрок без токена заморожен.
     private void startPixplazeConnection(PixplazeConnection connection) {
         final var players = connection.players();
-        final var settings = AuthorizationSettings.load(this);
-        getServer().getPluginManager().registerEvents(settings.enabled()
-                ? new AuthorizationGate(this, connection, settings.licensed(), settings.timeout(), settings.autoLogin())
-                : new PlayerAuthorizationListener(players), this);
+        final var authorizationSettings = AuthorizationSettings.load(this);
+        Listener authorizationListener;
+        if (authorizationSettings.enabled()) {
+            authorizationListener = new AuthorizationGate(
+                    this,
+                    connection,
+                    authorizationSettings.licensed(),
+                    authorizationSettings.timeout(),
+                    authorizationSettings.autoLogin()
+            );
+        } else {
+            authorizationListener = new PlayerAuthorizationListener(players);
+        }
+
+        getServer().getPluginManager().registerEvents(authorizationListener, this);
+
         final var command = Objects.requireNonNull(getCommand("pixplaze"), "Command 'pixplaze' is missing in plugin.yml");
         final var executor = new PixplazeCommand(this, connection);
         command.setExecutor(executor);
@@ -145,7 +158,7 @@ public final class PixplazeCorePlugin extends JavaPlugin {
         final var ip = getConfig().getString(PluginConfig.HTTP_IP, "auto");
         final var port = getConfig().getInt(PluginConfig.HTTP_PORT, 25566);
 
-        exchangeServer = new JavalinExchangeServer(ip == null || ip.isBlank() || "auto".equalsIgnoreCase(ip) ? null : ip.trim(), port, tokenVerifier);
+        exchangeServer = new JavalinExchangeServer(ip.isBlank() || "auto".equalsIgnoreCase(ip) ? null : ip.trim(), port, tokenVerifier);
         exchangeServer.start();
     }
 }

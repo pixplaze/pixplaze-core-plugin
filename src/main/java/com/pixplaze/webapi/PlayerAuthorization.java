@@ -9,14 +9,11 @@ import net.md_5.bungee.api.ChatColor;
 import org.bukkit.entity.Player;
 
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
@@ -35,14 +32,6 @@ import java.util.logging.Logger;
  * this server and refreshes for anyone who joins with the nickname).
  */
 public final class PlayerAuthorization {
-
-    /// Result of the join check, delivered on the main thread.
-    public enum JoinCheck {
-        /// The player may play: alive token, refreshed token, or stored tokens while web-api is unreachable.
-        AUTHORIZED,
-        /// No tokens, revoked tokens or a new IP on a non-licensed server: a confirmation is needed.
-        LOGIN_REQUIRED
-    }
 
     /// Outcome of a device flow started by {@link #startLogin}, delivered on the main thread.
     public interface SignInEvents {
@@ -91,19 +80,18 @@ public final class PlayerAuthorization {
     /// @param checkIp       non-licensed server: the IP must match the confirmed one
     /// @param untrustedIp   the IP is not the player's own (proxy without IP forwarding): every session needs a confirmation
     /// @param result        receives the outcome on the main thread
-    public void onJoin(Player player, boolean checkIp, boolean untrustedIp, Consumer<JoinCheck> result) {
-        final var id = player.getUniqueId();
-        final var name = player.getName();
+    public void onJoin(Player player, boolean checkIp, boolean untrustedIp, Consumer<Boolean> result) {
         final var ip = ipOf(player);
         executor.execute(() -> {
-            final var check = checkOnJoin(id, name, checkIp ? ip : null, untrustedIp);
+            final var check = checkOnJoin(player, checkIp ? ip : null, untrustedIp);
             runOnMainThread(() -> result.accept(check));
         });
     }
 
     /// Main thread: the player left — the device flow is no longer needed.
     public void onQuit(Player player) {
-        Optional.ofNullable(pending.remove(player.getUniqueId())).ifPresent(future -> future.cancel(true));
+        Optional.ofNullable(pending.remove(player.getUniqueId()))
+                .ifPresent(future -> future.cancel(true));
     }
 
     /// Main thread: `/pixplaze login` — starts the device flow and sends the link to chat.
@@ -182,37 +170,57 @@ public final class PlayerAuthorization {
     }
 
     /// @param ip IP to match against the confirmed one; {@code null} — not checked (licensed server)
-    private JoinCheck checkOnJoin(UUID id, String name, String ip, boolean untrustedIp) {
-        var record = loadOrCreate(id, name);
-        if (!name.equals(record.username())) {
-            record = record.withUsername(name);
+    private boolean checkOnJoin(Player player, String ip, boolean untrustedIp) {
+        final var uuid = player.getUniqueId();
+        final var name = player.getName();
+        var session = loadOrCreate(uuid, name);
+
+        if (!name.equals(session.username())) {
+            session = session.withUsername(name);
         }
-        if (!record.hasTokens()) {
-            save(record);
-            return JoinCheck.LOGIN_REQUIRED;
+        if (!session.hasTokens()) {
+            save(session);
+            logger.info("First authorization in Pixplaze required for %s.".formatted(name));
+            return false;
         }
-        if (ip != null && (untrustedIp || !ip.equals(record.confirmedIp()))) {
-            save(record);
-            return JoinCheck.LOGIN_REQUIRED;
+        if (ip != null && (untrustedIp || !ip.equals(session.confirmedIp()))) {
+            save(session);
+            logger.info(String.format(
+                    "Re-authorization in Pixplaze required for player %s: " +
+                    "joined from untrusted ip.",
+                    name
+            ));
+            return false;
         }
-        if (isAlive(record.accessToken())) {
-            save(record);
-            return JoinCheck.AUTHORIZED;
+
+        if (isSessionAlive(session.accessToken())) {
+            save(session);
+            final var token = JwtPayload.of(session.refreshToken());
+            logger.info(String.format(
+                    "Authorized in Pixplaze from alive session: expires at %s",
+                    Instant.ofEpochSecond(token.expiresAt()).atZone(ZoneId.systemDefault())
+            ));
+            return true;
         }
         try {
-            final var tokens = api.authorization().player().refresh(record.refreshToken());
+            final var tokens = api.authorization().player().refresh(session.refreshToken());
             // Single-use refresh token: the new pair is on disk before anything uses it
-            save(record.withTokens(tokens.accessToken(), tokens.refreshToken()));
-            return JoinCheck.AUTHORIZED;
+            save(session.withTokens(tokens.accessToken(), tokens.refreshToken()));
+            final var newToken = JwtPayload.of(tokens.refreshToken());
+            logger.info(String.format(
+                    "Authorized in Pixplaze from refreshed session: expires at %s",
+                    Instant.ofEpochSecond(newToken.expiresAt()).atZone(ZoneId.systemDefault())
+            ));
+            return true;
         } catch (OAuthException e) {
-            save(record.withoutTokens());
+            save(session.withoutTokens());
             logger.info("Pixplaze access of " + name + " is revoked (" + e.getMessage() + ")");
-            return JoinCheck.LOGIN_REQUIRED;
+            return false;
         } catch (WebApiException e) {
             // web-api unreachable: the stored pair (and the same IP) is enough, the next join tries again
-            save(record);
+            save(session);
             logger.warning("Cannot refresh Pixplaze tokens of " + name + ": " + e.getMessage());
-            return JoinCheck.AUTHORIZED;
+            return true;
         }
     }
 
@@ -238,7 +246,7 @@ public final class PlayerAuthorization {
         }
     }
 
-    private static boolean isAlive(String accessToken) {
+    private static boolean isSessionAlive(String accessToken) {
         try {
             return JwtPayload.of(accessToken).expiresAt() - Instant.now().getEpochSecond() > REFRESH_MARGIN_SECONDS;
         } catch (RuntimeException e) {
@@ -248,7 +256,10 @@ public final class PlayerAuthorization {
 
     private void sendLink(UUID id, String url, String userCode) {
         runOnMainThread(() -> Optional.ofNullable(plugin.getServer().getPlayer(id))
-                .ifPresent(player -> ConfirmationLinks.send(player, "Confirm the sign-in in Pixplaze", url, userCode)));
+                .ifPresent(player -> {
+                    ConfirmationLinks.send(player, "Confirm the sign-in in Pixplaze", url, userCode);
+                    player.sendTitle("Unauthorized", "Check the link in chat", 10, 80, 10);
+                }));
     }
 
     private void message(UUID id, String text) {

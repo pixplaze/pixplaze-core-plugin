@@ -1,4 +1,4 @@
-package com.pixplaze.rcon;
+package com.pixplaze.message;
 
 import com.pixplaze.api.ext.data.message.MinecraftMessageInfo;
 import org.apache.logging.log4j.Level;

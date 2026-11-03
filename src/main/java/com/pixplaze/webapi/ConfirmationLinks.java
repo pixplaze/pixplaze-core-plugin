@@ -12,14 +12,16 @@ final class ConfirmationLinks {
     private ConfirmationLinks() {
     }
 
-    /// Main thread: "{prompt} (code …): [open Pixplaze]".
+    /// Main thread: "{prompt} (code …): `[open Pixplaze]`".
     static void send(Player player, String prompt, String url, String userCode) {
         final var link = new TextComponent("[open Pixplaze]");
         link.setColor(ChatColor.AQUA);
         link.setUnderlined(true);
         link.setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, clickable(url)));
-        player.spigot().sendMessage(new ComponentBuilder(prompt + " (code " + userCode + "): ")
-                .color(ChatColor.GRAY).append(link).create());
+        player.spigot().sendMessage(
+                new ComponentBuilder(prompt + " (code " + userCode + "): ")
+                        .color(ChatColor.GRAY).append(link).create()
+        );
     }
 
     /// The client opens only http(s) links, and web-api may give the address without the scheme.

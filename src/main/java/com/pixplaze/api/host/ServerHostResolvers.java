@@ -2,6 +2,7 @@ package com.pixplaze.api.host;
 
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import com.pixplaze.plugin.PluginConfig;
+import com.pixplaze.util.ServerUtils;
 
 /// Фабрика {@link ServerHostResolver}: выбирает реализацию в зависимости от условий окружения.
 ///
@@ -30,7 +31,7 @@ public final class ServerHostResolvers {
             return configured;
         }
 
-        if (ProxyDetector.isProxied()) {
+        if (ServerUtils.isProxied()) {
             plugin.getLogger().warning(("Server appears to be behind a proxy but '%s' is not set in config.yml. "
                     + "Automatic host detection via handshake is unreliable behind proxies (especially Velocity). "
                     + "Set '%s' explicitly. Falling back to best-effort detection by player connections.")

@@ -1,8 +1,7 @@
-package com.pixplaze.chat;
+package com.pixplaze.message;
 
 import com.pixplaze.api.ext.data.message.MinecraftMessageInfo;
 import com.pixplaze.api.ext.data.message.MinecraftMessageInfo.Type;
-import com.pixplaze.message.MessageBuffer;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;

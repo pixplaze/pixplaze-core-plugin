@@ -1,7 +1,6 @@
 package com.pixplaze.webapi;
 
 import com.pixplaze.api.dao.MinecraftServerDao;
-import com.pixplaze.auth.KeySource;
 import com.pixplaze.api.ext.OAuthException;
 import com.pixplaze.api.ext.PendingAuthorization;
 import com.pixplaze.api.ext.data.auth.MinecraftServerAuthorizationDetails;
@@ -10,6 +9,7 @@ import com.pixplaze.api.ext.data.oauth.OAuthError;
 import com.pixplaze.api.ext.data.server.MinecraftServerHeartbeatInfo;
 import com.pixplaze.api.ext.data.server.MinecraftServerHeartbeatResponse;
 import com.pixplaze.api.ext.data.server.MinecraftServerInfo;
+import com.pixplaze.auth.KeySource;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import com.pixplaze.plugin.PluginConfig;
 import org.bukkit.ChatColor;
@@ -19,16 +19,10 @@ import org.bukkit.scheduler.BukkitTask;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
-import java.util.function.Consumer;
 import java.util.Optional;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.UUID;
+import java.util.concurrent.*;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -106,7 +100,7 @@ public final class PixplazeConnection implements KeySource {
     /// Connection by `pixplaze.gateway` from the config; empty — the URL is not set, the integration is off.
     public static Optional<PixplazeConnection> create(PixplazeCorePlugin plugin) {
         final var url = plugin.getConfig().getString(PluginConfig.GATEWAY, "");
-        if (url == null || url.isBlank()) {
+        if (url.isBlank()) {
             plugin.getLogger().warning(PluginConfig.GATEWAY + " is not set in config.yml: the server is not connected to Pixplaze");
             return Optional.empty();
         }

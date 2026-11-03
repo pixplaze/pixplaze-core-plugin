@@ -1,8 +1,8 @@
 package com.pixplaze.webapi;
 
-import com.pixplaze.api.host.ServerLicense;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import com.pixplaze.plugin.PluginConfig;
+import com.pixplaze.util.ServerUtils;
 
 import java.time.Duration;
 
@@ -25,14 +25,16 @@ public record AuthorizationSettings(boolean enabled, boolean licensed, Duration 
 
     public static AuthorizationSettings load(PixplazeCorePlugin plugin) {
         final var config = plugin.getConfig();
-        final var licensed = ServerLicense.isLicensed(plugin.getServer());
+        final var licensed = ServerUtils.isLicensed(plugin.getServer());
         var enabled = config.getBoolean(ENABLED, false);
         if (!licensed && !enabled) {
             enabled = true;
             config.set(ENABLED, true);
             plugin.saveConfig();
-            plugin.getLogger().warning("The server does not check accounts with Mojang (offline mode or behind a proxy):"
-                    + " " + ENABLED + " is turned on, players must sign in to Pixplaze");
+            plugin.getLogger().warning(
+                    "The server does not check accounts with Mojang (offline mode or behind a proxy):" +
+                            " " + ENABLED + " is turned on, players must sign in to Pixplaze"
+            );
         }
         final var minutes = Math.max(config.getLong(TIMEOUT, 5), 0);
         final var autoLogin = config.getBoolean(PluginConfig.AUTHORIZATION_AUTO_LOGIN, true);

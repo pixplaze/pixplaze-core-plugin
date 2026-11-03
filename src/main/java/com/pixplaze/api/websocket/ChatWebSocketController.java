@@ -6,7 +6,7 @@ import com.pixplaze.api.ext.data.message.MinecraftMessageInfo;
 import com.pixplaze.auth.PluginAccess;
 import com.pixplaze.auth.PluginTokenVerifier;
 import com.pixplaze.auth.VerifiedToken;
-import com.pixplaze.chat.ChatBuffer;
+import com.pixplaze.message.ChatBuffer;
 import io.javalin.websocket.WsMessageContext;
 import org.bukkit.Bukkit;
 

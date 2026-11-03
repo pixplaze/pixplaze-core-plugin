@@ -62,8 +62,13 @@ public final class AuthorizationGate implements Listener, PlayerAuthorization.Si
     private final Map<UUID, BukkitTask> kicks = new ConcurrentHashMap<>();
     private boolean untrustedIpWarned;
 
-    public AuthorizationGate(PixplazeCorePlugin plugin, PixplazeConnection connection, boolean licensed, Duration timeout,
-                             boolean autoLogin) {
+    public AuthorizationGate(
+            PixplazeCorePlugin plugin,
+            PixplazeConnection connection,
+            boolean licensed,
+            Duration timeout,
+            boolean autoLogin
+    ) {
         this.plugin = plugin;
         this.connection = connection;
         this.authorization = connection.players();
@@ -86,11 +91,11 @@ public final class AuthorizationGate implements Listener, PlayerAuthorization.Si
         final var player = event.getPlayer();
         frozen.add(player.getUniqueId());
         final var untrustedIp = !licensed && isUntrusted(player);
-        authorization.onJoin(player, !licensed, untrustedIp, check -> {
+        authorization.onJoin(player, !licensed, untrustedIp, isAuthorized -> {
             if (!player.isOnline()) {
                 return;
             }
-            if (check == PlayerAuthorization.JoinCheck.AUTHORIZED) {
+            if (isAuthorized) {
                 release(player);
             } else {
                 requireLogin(player);

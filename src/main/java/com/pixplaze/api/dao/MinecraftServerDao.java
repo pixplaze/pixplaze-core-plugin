@@ -2,19 +2,19 @@ package com.pixplaze.api.dao;
 
 import com.pixplaze.api.dao.plugin.MinecraftPluginDao;
 import com.pixplaze.api.exception.PixplazeApiException;
-import com.pixplaze.api.host.HostAddress;
-import com.pixplaze.api.host.ServerLicense;
 import com.pixplaze.api.ext.MinecraftServerApi;
 import com.pixplaze.api.ext.data.player.MinecraftPlayerInfo;
 import com.pixplaze.api.ext.data.player.MinecraftPlayerListInfo;
 import com.pixplaze.api.ext.data.plugin.MinecraftPluginInfo;
 import com.pixplaze.api.ext.data.server.*;
+import com.pixplaze.api.host.HostAddress;
 import com.pixplaze.api.nms.MinecraftServer;
 import com.pixplaze.api.reflection.Reflection;
 import com.pixplaze.api.state.ServerStateSnapshot;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import com.pixplaze.plugin.PluginConfig;
 import com.pixplaze.util.ServerFiles;
+import com.pixplaze.util.ServerUtils;
 import org.bukkit.Server;
 
 import javax.annotation.Nullable;
@@ -47,7 +47,7 @@ public class MinecraftServerDao implements MinecraftServerApi {
     public MinecraftServerInfo getServerInfo(boolean retrieveThumbnail) {
         final var hosts = getServerHosts();
         final var motd = server.getMotd();
-        final var license = ServerLicense.isLicensed(server);
+        final var license = ServerUtils.isLicensed(server);
         final var thumbnail = getServerThumbnail(retrieveThumbnail);
         final var core = minecraftServerCoreDao.getMinecraftCoreInfo();
         final var state = getServerState();
@@ -95,7 +95,7 @@ public class MinecraftServerDao implements MinecraftServerApi {
     public MinecraftServerHeartbeatInfo getHeartbeatInfo() {
         final var players = PlayerSnapshots.of(server.getOnlinePlayers());
         return new MinecraftServerHeartbeatInfo(
-                ServerLicense.isLicensed(server),
+                ServerUtils.isLicensed(server),
                 MinecraftServerStateInfo.heartbeat(
                         getCurrentTps(),
                         getMedianPing(),
