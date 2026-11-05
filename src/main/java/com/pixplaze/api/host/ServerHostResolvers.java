@@ -1,7 +1,7 @@
 package com.pixplaze.api.host;
 
+import com.pixplaze.config.PixplazeConfig;
 import com.pixplaze.plugin.PixplazeCorePlugin;
-import com.pixplaze.plugin.PluginConfig;
 import com.pixplaze.util.ServerUtils;
 
 /// Фабрика {@link ServerHostResolver}: выбирает реализацию в зависимости от условий окружения.
@@ -17,7 +17,7 @@ import com.pixplaze.util.ServerUtils;
 /// forwarding автоопределение хост не найдёт, и {@code public.host} придётся задать вручную.
 public final class ServerHostResolvers {
 
-    public static final String CONFIG_PATH = PluginConfig.PUBLIC_HOST;
+    public static final String CONFIG_PATH = PixplazeConfig.PUBLIC_HOST;
 
     private ServerHostResolvers() {
     }

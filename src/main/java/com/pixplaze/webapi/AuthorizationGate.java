@@ -90,8 +90,7 @@ public final class AuthorizationGate implements Listener, PlayerAuthorization.Si
     public void onJoin(PlayerJoinEvent event) {
         final var player = event.getPlayer();
         frozen.add(player.getUniqueId());
-        final var untrustedIp = !licensed && isUntrusted(player);
-        authorization.onJoin(player, !licensed, untrustedIp, isAuthorized -> {
+        authorization.onJoin(player, isAuthorized -> {
             if (!player.isOnline()) {
                 return;
             }
@@ -166,19 +165,6 @@ public final class AuthorizationGate implements Listener, PlayerAuthorization.Si
 
     private void cancelKick(UUID id) {
         Optional.ofNullable(kicks.remove(id)).ifPresent(BukkitTask::cancel);
-    }
-
-    /// The address is not the player's own — loopback or private network, as behind a proxy without IP forwarding.
-    private boolean isUntrusted(Player player) {
-        final var address = player.getAddress();
-        final InetAddress ip = address == null ? null : address.getAddress();
-        final var untrusted = ip == null || ip.isLoopbackAddress() || ip.isSiteLocalAddress() || ip.isLinkLocalAddress();
-        if (untrusted && !untrustedIpWarned) {
-            untrustedIpWarned = true;
-            plugin.getLogger().warning("Players join from a local address (" + (ip == null ? "unknown" : ip.getHostAddress())
-                    + "): if the server is behind a proxy, enable IP forwarding, otherwise every session needs a Pixplaze confirmation");
-        }
-        return untrusted;
     }
 
     private boolean isFrozen(Object entity) {

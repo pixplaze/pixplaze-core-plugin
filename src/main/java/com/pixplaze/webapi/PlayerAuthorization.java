@@ -4,7 +4,10 @@ import com.pixplaze.api.ext.OAuthException;
 import com.pixplaze.api.ext.data.auth.AuthorizationTokenInfo;
 import com.pixplaze.api.ext.data.auth.MinecraftPlayerAuthorizationDetails;
 import com.pixplaze.api.ext.data.oauth.OAuthError;
+import com.pixplaze.config.PixplazeConfig;
 import com.pixplaze.plugin.PixplazeCorePlugin;
+import com.pixplaze.util.AddressResolver;
+import com.pixplaze.util.ServerUtils;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.entity.Player;
 
@@ -44,6 +47,7 @@ public final class PlayerAuthorization {
     private static final long REFRESH_MARGIN_SECONDS = 60;
 
     private final PixplazeCorePlugin plugin;
+    private final PixplazeConfig config;
     private final Logger logger;
     private final HttpPixplazeWebApi api;
     private final ExecutorService executor;
@@ -68,6 +72,7 @@ public final class PlayerAuthorization {
         this.executor = executor;
         this.serverId = serverId;
         this.store = new PlayerRecordStore(plugin.getDataFolder().toPath().resolve("players"));
+        this.config = plugin.getPixplazeConfig();
     }
 
     /// Receiver of device flow outcomes (the authorization gate freezes and releases players by them).
@@ -77,14 +82,12 @@ public final class PlayerAuthorization {
 
     /// Main thread: the player joined — the file is created or updated, the token checked.
     ///
-    /// @param checkIp       non-licensed server: the IP must match the confirmed one
     /// @param untrustedIp   the IP is not the player's own (proxy without IP forwarding): every session needs a confirmation
     /// @param result        receives the outcome on the main thread
-    public void onJoin(Player player, boolean checkIp, boolean untrustedIp, Consumer<Boolean> result) {
-        final var ip = ipOf(player);
-        executor.execute(() -> {
-            final var check = checkOnJoin(player, checkIp ? ip : null, untrustedIp);
-            runOnMainThread(() -> result.accept(check));
+    public void onJoin(Player player, Consumer<Boolean> result) {
+        executeAsync(() -> {
+            final var check = checkOnJoin(player);
+            executeSync(() -> result.accept(check));
         });
     }
 
@@ -109,12 +112,12 @@ public final class PlayerAuthorization {
                 .minecraftServerId(server.get())
                 .uuid(player.getUniqueId())
                 .username(player.getName())
-                .ipAddress(ipOf(player))
+                .ipAddress(AddressResolver.ipOf(player))
                 .isOperator(player.isOp())
                 .build();
         // Placeholder until the flow starts: a second command while web-api answers must not start another one
         pending.put(player.getUniqueId(), new CompletableFuture<>());
-        executor.execute(() -> authorize(details));
+        executeAsync(() -> authorize(details));
     }
 
     /// Cancels all device flows (plugin disable).
@@ -126,12 +129,12 @@ public final class PlayerAuthorization {
     private void authorize(MinecraftPlayerAuthorizationDetails details) {
         final var id = details.uuid();
         try {
-            final var flow = api.authorization().player().authorize(details);
-            final var response = flow.response();
-            sendLink(id, response.verificationUriComplete(), response.userCode());
-            final var future = flow.await(executor);
+            final var deviceFlow = api.authorization().player().authorize(details);
+            final var deviceResponse = deviceFlow.response();
+            sendLink(id, deviceResponse.verificationUriComplete(), deviceResponse.userCode());
+            final var future = deviceFlow.await(executor);
             if (pending.replace(id, future) == null) {
-                future.cancel(true); // Left while the flow was starting
+                future.cancel(true); // Left while the deviceFlow was starting
                 return;
             }
             future.whenComplete((tokens, error) -> onAuthorized(details, tokens, error));
@@ -139,7 +142,7 @@ public final class PlayerAuthorization {
             pending.remove(id);
             logger.warning("Cannot start Pixplaze sign-in of " + details.username() + ": " + e.getMessage());
             message(id, ChatColor.RED + "Pixplaze is unavailable, try again later.");
-            runOnMainThread(() -> events.onUnavailable(id));
+            executeSync(() -> events.onUnavailable(id));
         }
     }
 
@@ -151,7 +154,7 @@ public final class PlayerAuthorization {
             save(record.signedIn(details.ipAddress(), tokens.accessToken(), tokens.refreshToken()));
             logger.info(details.username() + " signed in to Pixplaze");
             message(id, ChatColor.GREEN + "You are signed in to Pixplaze.");
-            runOnMainThread(() -> events.onSignedIn(id));
+            executeSync(() -> events.onSignedIn(id));
             return;
         }
 
@@ -170,25 +173,30 @@ public final class PlayerAuthorization {
     }
 
     /// @param ip IP to match against the confirmed one; {@code null} — not checked (licensed server)
-    private boolean checkOnJoin(Player player, String ip, boolean untrustedIp) {
-        final var uuid = player.getUniqueId();
-        final var name = player.getName();
-        var session = loadOrCreate(uuid, name);
+    private boolean checkOnJoin(Player player) {
+        final var playerUuid = player.getUniqueId();
+        final var playerName = player.getName();
+        final var playerIp = AddressResolver.ipOf(player);
+        final var isUntrustedIp = AddressResolver.isUntrusted(player);
+        final var shouldCheckIp = !ServerUtils.isLicensed(plugin.getServer());
 
-        if (!name.equals(session.username())) {
-            session = session.withUsername(name);
+        var session = loadOrCreate(playerUuid, playerName);
+
+        if (!playerName.equals(session.username())) {
+            session = session.withUsername(playerName);
         }
         if (!session.hasTokens()) {
             save(session);
-            logger.info("First authorization in Pixplaze required for %s.".formatted(name));
+            logger.info("First authorization in Pixplaze required for %s.".formatted(playerName));
             return false;
         }
-        if (ip != null && (untrustedIp || !ip.equals(session.confirmedIp()))) {
+        if (shouldCheckIp && (isUntrustedIp || isPlayerAddressChanged(playerIp, session))) {
             save(session);
             logger.info(String.format(
                     "Re-authorization in Pixplaze required for player %s: " +
-                    "joined from untrusted ip.",
-                    name
+                    "joined from untrusted ip (%s)",
+                    playerName,
+                    playerIp
             ));
             return false;
         }
@@ -214,19 +222,14 @@ public final class PlayerAuthorization {
             return true;
         } catch (OAuthException e) {
             save(session.withoutTokens());
-            logger.info("Pixplaze access of " + name + " is revoked (" + e.getMessage() + ")");
+            logger.info("Pixplaze access of " + playerName + " is revoked (" + e.getMessage() + ")");
             return false;
         } catch (WebApiException e) {
             // web-api unreachable: the stored pair (and the same IP) is enough, the next join tries again
             save(session);
-            logger.warning("Cannot refresh Pixplaze tokens of " + name + ": " + e.getMessage());
+            logger.warning("Cannot refresh Pixplaze tokens of " + playerName + ": " + e.getMessage());
             return true;
         }
-    }
-
-    private static String ipOf(Player player) {
-        final var address = player.getAddress();
-        return address == null || address.getAddress() == null ? null : address.getAddress().getHostAddress();
     }
 
     private PlayerRecord loadOrCreate(UUID id, String name) {
@@ -253,9 +256,13 @@ public final class PlayerAuthorization {
             return false;
         }
     }
+    
+    private boolean isPlayerAddressChanged(String ip, PlayerRecord session) {
+        return ip != null && !ip.equals(session.confirmedIp());
+    }
 
     private void sendLink(UUID id, String url, String userCode) {
-        runOnMainThread(() -> Optional.ofNullable(plugin.getServer().getPlayer(id))
+        executeSync(() -> Optional.ofNullable(plugin.getServer().getPlayer(id))
                 .ifPresent(player -> {
                     ConfirmationLinks.send(player, "Confirm the sign-in in Pixplaze", url, userCode);
                     player.sendTitle("Unauthorized", "Check the link in chat", 10, 80, 10);
@@ -263,10 +270,16 @@ public final class PlayerAuthorization {
     }
 
     private void message(UUID id, String text) {
-        runOnMainThread(() -> Optional.ofNullable(plugin.getServer().getPlayer(id)).ifPresent(player -> player.sendMessage(text)));
+        executeSync(() -> Optional.ofNullable(plugin.getServer().getPlayer(id)).ifPresent(player -> player.sendMessage(text)));
     }
 
-    private void runOnMainThread(Runnable task) {
+    /// Execute on async thread
+    private void executeAsync(Runnable task) {
+        executor.execute(task);
+    }
+
+    /// Execute on main server thread
+    private void executeSync(Runnable task) {
         if (plugin.isEnabled()) {
             plugin.getServer().getScheduler().runTask(plugin, task);
         }

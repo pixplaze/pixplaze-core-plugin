@@ -11,7 +11,6 @@ import com.pixplaze.api.ext.data.server.MinecraftServerHeartbeatResponse;
 import com.pixplaze.api.ext.data.server.MinecraftServerInfo;
 import com.pixplaze.auth.KeySource;
 import com.pixplaze.plugin.PixplazeCorePlugin;
-import com.pixplaze.plugin.PluginConfig;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
@@ -99,9 +98,8 @@ public final class PixplazeConnection implements KeySource {
 
     /// Connection by `pixplaze.gateway` from the config; empty — the URL is not set, the integration is off.
     public static Optional<PixplazeConnection> create(PixplazeCorePlugin plugin) {
-        final var url = plugin.getConfig().getString(PluginConfig.GATEWAY, "");
+        final var url = plugin.getPixplazeConfig().gateway().path();
         if (url.isBlank()) {
-            plugin.getLogger().warning(PluginConfig.GATEWAY + " is not set in config.yml: the server is not connected to Pixplaze");
             return Optional.empty();
         }
         return Optional.of(new PixplazeConnection(plugin, url.trim()));
@@ -111,7 +109,7 @@ public final class PixplazeConnection implements KeySource {
     public void start() {
         executor.execute(this::loadCredentials);
         heartbeatTask = plugin.getServer().getScheduler()
-                .runTaskTimer(plugin, this::tick, FIRST_TICK_DELAY_TICKS, HEARTBEAT_PERIOD_TICKS);
+                .runTaskTimer(plugin, this::heartbeatTask, FIRST_TICK_DELAY_TICKS, HEARTBEAT_PERIOD_TICKS);
     }
 
     /// Pixplaze id of this server; empty until it is registered.
@@ -212,7 +210,7 @@ public final class PixplazeConnection implements KeySource {
     }
 
     /// Main thread: reads the heartbeat body from Bukkit API and hands it to the network thread.
-    private void tick() {
+    private void heartbeatTask() {
         final var heartbeat = dao().getHeartbeatInfo();
         executor.execute(() -> onTick(heartbeat));
     }

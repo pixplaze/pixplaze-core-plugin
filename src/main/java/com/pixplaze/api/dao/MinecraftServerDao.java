@@ -12,7 +12,6 @@ import com.pixplaze.api.nms.MinecraftServer;
 import com.pixplaze.api.reflection.Reflection;
 import com.pixplaze.api.state.ServerStateSnapshot;
 import com.pixplaze.plugin.PixplazeCorePlugin;
-import com.pixplaze.plugin.PluginConfig;
 import com.pixplaze.util.ServerFiles;
 import com.pixplaze.util.ServerUtils;
 import org.bukkit.Server;

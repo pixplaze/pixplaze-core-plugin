@@ -4,12 +4,12 @@ import com.pixplaze.api.host.ServerHostResolver;
 import com.pixplaze.api.host.ServerHostResolvers;
 import com.pixplaze.api.state.ServerStateSnapshot;
 import com.pixplaze.auth.PluginTokenVerifier;
-import com.pixplaze.message.ChatBuffer;
+import com.pixplaze.config.PixplazeConfig;
 import com.pixplaze.exchange.ExchangeServer;
 import com.pixplaze.exchange.JavalinExchangeServer;
+import com.pixplaze.message.ChatBuffer;
 import com.pixplaze.message.ConsoleBuffer;
 import com.pixplaze.webapi.AuthorizationGate;
-import com.pixplaze.webapi.AuthorizationSettings;
 import com.pixplaze.webapi.PixplazeCommand;
 import com.pixplaze.webapi.PixplazeConnection;
 import com.pixplaze.webapi.PlayerAuthorizationListener;
@@ -23,6 +23,7 @@ import java.util.Optional;
 public final class PixplazeCorePlugin extends JavaPlugin {
 
     private static PixplazeCorePlugin instance;
+    private static PixplazeConfig pixplazeConfig;
     private ConsoleBuffer consoleBuffer;
     private ChatBuffer chatBuffer;
     private ExchangeServer<Javalin> exchangeServer;
@@ -39,11 +40,19 @@ public final class PixplazeCorePlugin extends JavaPlugin {
         return Objects.requireNonNull(instance, "PixplazeCorePlugin is disabled");
     }
 
+    public PixplazeConfig getPixplazeConfig() {
+        return pixplazeConfig;
+    }
+
+    @Override
+    public void onLoad() {
+        instance = this;
+    }
+
     @Override
     public void onEnable() {
-        instance = this;
+        pixplazeConfig = PixplazeConfig.load(this);
         saveDefaultConfig();
-        PluginConfig.upgrade(this);
         initMessageBuffers();
         // До HTTP-сервера: контроллеры и DAO создаются при монтировании маршрутов
         // и рассчитывают, что снимок уже есть.
@@ -54,33 +63,6 @@ public final class PixplazeCorePlugin extends JavaPlugin {
         initServerHostResolver();
         // После резолвера хоста: регистрации нужен публичный адрес сервера
         Optional.ofNullable(pixplazeConnection).ifPresent(this::startPixplazeConnection);
-    }
-
-    /// Подключение, вход игроков ({@code /pixplaze login}) и проверка их токенов при входе на сервер.
-    /// С {@code authorization.enabled} (на нелицензионном сервере — всегда) игрок без токена заморожен.
-    private void startPixplazeConnection(PixplazeConnection connection) {
-        final var players = connection.players();
-        final var authorizationSettings = AuthorizationSettings.load(this);
-        Listener authorizationListener;
-        if (authorizationSettings.enabled()) {
-            authorizationListener = new AuthorizationGate(
-                    this,
-                    connection,
-                    authorizationSettings.licensed(),
-                    authorizationSettings.timeout(),
-                    authorizationSettings.autoLogin()
-            );
-        } else {
-            authorizationListener = new PlayerAuthorizationListener(players);
-        }
-
-        getServer().getPluginManager().registerEvents(authorizationListener, this);
-
-        final var command = Objects.requireNonNull(getCommand("pixplaze"), "Command 'pixplaze' is missing in plugin.yml");
-        final var executor = new PixplazeCommand(this, connection);
-        command.setExecutor(executor);
-        command.setTabCompleter(executor);
-        connection.start();
     }
 
     /// Порядок важен: сначала отцепляемся от log4j и событий Bukkit (они живут дольше плагина),
@@ -105,6 +87,35 @@ public final class PixplazeCorePlugin extends JavaPlugin {
                 .ifPresent(ServerStateSnapshot::stop);
 
         instance = null;
+    }
+
+    /// Подключение, вход игроков ({@code /pixplaze login}) и проверка их токенов при входе на сервер.
+    /// С {@code authorization.enabled} (на нелицензионном сервере — всегда) игрок без токена заморожен.
+    private void startPixplazeConnection(PixplazeConnection connection) {
+        getServer().getPluginManager().registerEvents(createAuthorizationResolver(connection), this);
+
+        final var command = Objects.requireNonNull(getCommand("pixplaze"), "Command 'pixplaze' is missing in plugin.yml");
+        final var executor = new PixplazeCommand(this, connection);
+        command.setExecutor(executor);
+        command.setTabCompleter(executor);
+        connection.start();
+    }
+
+    private Listener createAuthorizationResolver(PixplazeConnection connection) {
+        final var players = connection.players();
+        final var authorizationConfig = getPixplazeConfig().authorization();
+
+        if (authorizationConfig.enabled()) {
+            return new AuthorizationGate(
+                    this,
+                    connection,
+                    authorizationConfig.licensed(),
+                    authorizationConfig.timeout(),
+                    authorizationConfig.autoLogin()
+            );
+        }
+
+        return new PlayerAuthorizationListener(players);
     }
 
     public ConsoleBuffer getConsoleBuffer() {
@@ -155,8 +166,9 @@ public final class PixplazeCorePlugin extends JavaPlugin {
 
     /// HTTP-сервер API плагина на {@code http.port}; {@code http.ip} — интерфейс ({@code auto} или пусто — все).
     private void initHttpServer() {
-        final var ip = getConfig().getString(PluginConfig.HTTP_IP, "auto");
-        final var port = getConfig().getInt(PluginConfig.HTTP_PORT, 25566);
+        final var httpConfig = getPixplazeConfig().http();
+        final var ip = httpConfig.ip();
+        final var port = httpConfig.port();
 
         exchangeServer = new JavalinExchangeServer(ip.isBlank() || "auto".equalsIgnoreCase(ip) ? null : ip.trim(), port, tokenVerifier);
         exchangeServer.start();
