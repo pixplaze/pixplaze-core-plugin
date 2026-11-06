@@ -193,7 +193,7 @@ public final class PlayerAuthorization {
         if (shouldCheckIp && (isUntrustedIp || isPlayerAddressChanged(playerIp, session))) {
             save(session);
             logger.info(String.format(
-                    "Re-authorization in Pixplaze required for player %s: " +
+                    "Player %s needs re-authorization: " +
                     "joined from untrusted ip (%s)",
                     playerName,
                     playerIp
@@ -205,7 +205,8 @@ public final class PlayerAuthorization {
             save(session);
             final var token = JwtPayload.of(session.refreshToken());
             logger.info(String.format(
-                    "Authorized in Pixplaze from alive session: expires at %s",
+                    "Player %s is authorized from alive session: expires at %s",
+                    playerName,
                     Instant.ofEpochSecond(token.expiresAt()).atZone(ZoneId.systemDefault())
             ));
             return true;
@@ -216,7 +217,7 @@ public final class PlayerAuthorization {
             save(session.withTokens(tokens.accessToken(), tokens.refreshToken()));
             final var newToken = JwtPayload.of(tokens.refreshToken());
             logger.info(String.format(
-                    "Authorized in Pixplaze from refreshed session: expires at %s",
+                    "Plsyer %s authorized from refreshed session: expires at %s",
                     Instant.ofEpochSecond(newToken.expiresAt()).atZone(ZoneId.systemDefault())
             ));
             return true;
@@ -270,7 +271,8 @@ public final class PlayerAuthorization {
     }
 
     private void message(UUID id, String text) {
-        executeSync(() -> Optional.ofNullable(plugin.getServer().getPlayer(id)).ifPresent(player -> player.sendMessage(text)));
+        executeSync(() -> Optional.ofNullable(plugin.getServer().getPlayer(id))
+                .ifPresent(player -> player.sendMessage(text)));
     }
 
     /// Execute on async thread
