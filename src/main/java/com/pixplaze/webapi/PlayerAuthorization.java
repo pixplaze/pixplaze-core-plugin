@@ -127,34 +127,34 @@ public final class PlayerAuthorization {
     }
 
     private void authorize(MinecraftPlayerAuthorizationDetails details) {
-        final var id = details.uuid();
+        final var playerUuid = details.uuid();
         try {
             final var deviceFlow = api.authorization().player().authorize(details);
             final var deviceResponse = deviceFlow.response();
-            sendLink(id, deviceResponse.verificationUriComplete(), deviceResponse.userCode());
+            sendLink(playerUuid, deviceResponse.verificationUriComplete(), deviceResponse.userCode());
             final var future = deviceFlow.await(executor);
-            if (pending.replace(id, future) == null) {
+            if (pending.replace(playerUuid, future) == null) {
                 future.cancel(true); // Left while the deviceFlow was starting
                 return;
             }
             future.whenComplete((tokens, error) -> onAuthorized(details, tokens, error));
         } catch (OAuthException | WebApiException e) {
-            pending.remove(id);
+            pending.remove(playerUuid);
             logger.warning("Cannot start Pixplaze sign-in of " + details.username() + ": " + e.getMessage());
-            message(id, ChatColor.RED + "Pixplaze is unavailable, try again later.");
-            executeSync(() -> events.onUnavailable(id));
+            message(playerUuid, ChatColor.RED + "Pixplaze is unavailable, try again later.");
+            executeSync(() -> events.onUnavailable(playerUuid));
         }
     }
 
     private void onAuthorized(MinecraftPlayerAuthorizationDetails details, AuthorizationTokenInfo tokens, Throwable error) {
-        final var id = details.uuid();
-        pending.remove(id);
+        final var playerUuid = details.uuid();
+        pending.remove(playerUuid);
         if (error == null) {
-            final var record = loadOrCreate(id, details.username());
+            final var record = loadOrCreate(playerUuid, details.username());
             save(record.signedIn(details.ipAddress(), tokens.accessToken(), tokens.refreshToken()));
             logger.info(details.username() + " signed in to Pixplaze");
-            message(id, ChatColor.GREEN + "You are signed in to Pixplaze.");
-            executeSync(() -> events.onSignedIn(id));
+            message(playerUuid, ChatColor.GREEN + "You are signed in to Pixplaze.");
+            executeSync(() -> events.onSignedIn(playerUuid));
             return;
         }
 
@@ -163,22 +163,21 @@ public final class PlayerAuthorization {
             return;
         }
         if (cause instanceof OAuthException oauth && oauth.error() == OAuthError.ACCESS_DENIED) {
-            message(id, ChatColor.RED + "Sign-in denied. If this player is linked to another Pixplaze profile, only that profile can confirm it.");
+            message(playerUuid, ChatColor.RED + "Sign-in denied. If this player is linked to another Pixplaze profile, only that profile can confirm it.");
         } else if (cause instanceof OAuthException oauth && oauth.error() == OAuthError.EXPIRED_TOKEN) {
-            message(id, ChatColor.YELLOW + "The sign-in link expired: run /pixplaze login again.");
+            message(playerUuid, ChatColor.YELLOW + "The sign-in link expired: run /pixplaze login again.");
         } else {
             logger.warning("Pixplaze sign-in of " + details.username() + " failed: " + cause.getMessage());
-            message(id, ChatColor.RED + "Sign-in failed, try again later.");
+            message(playerUuid, ChatColor.RED + "Sign-in failed, try again later.");
         }
     }
 
-    /// @param ip IP to match against the confirmed one; {@code null} — not checked (licensed server)
     private boolean checkOnJoin(Player player) {
         final var playerUuid = player.getUniqueId();
         final var playerName = player.getName();
         final var playerIp = AddressResolver.ipOf(player);
         final var isUntrustedIp = AddressResolver.isUntrusted(player);
-        final var shouldCheckIp = !ServerUtils.isLicensed(plugin.getServer());
+        final var shouldCheckIp = config.authorization().enabled() && !ServerUtils.isLicensed(plugin.getServer());
 
         var session = loadOrCreate(playerUuid, playerName);
 
@@ -187,7 +186,7 @@ public final class PlayerAuthorization {
         }
         if (!session.hasTokens()) {
             save(session);
-            logger.info("First authorization in Pixplaze required for %s.".formatted(playerName));
+            logger.info("Player %s needs a first authorization".formatted(playerName));
             return false;
         }
         if (shouldCheckIp && (isUntrustedIp || isPlayerAddressChanged(playerIp, session))) {
@@ -203,9 +202,9 @@ public final class PlayerAuthorization {
 
         if (isSessionAlive(session.accessToken())) {
             save(session);
-            final var token = JwtPayload.of(session.refreshToken());
+            final var token = JwtPayload.of(session.accessToken());
             logger.info(String.format(
-                    "Player %s is authorized from alive session: expires at %s",
+                    "Player %s is authorized from a live session: expires at %s",
                     playerName,
                     Instant.ofEpochSecond(token.expiresAt()).atZone(ZoneId.systemDefault())
             ));
@@ -215,9 +214,10 @@ public final class PlayerAuthorization {
             final var tokens = api.authorization().player().refresh(session.refreshToken());
             // Single-use refresh token: the new pair is on disk before anything uses it
             save(session.withTokens(tokens.accessToken(), tokens.refreshToken()));
-            final var newToken = JwtPayload.of(tokens.refreshToken());
+            final var newToken = JwtPayload.of(tokens.accessToken());
             logger.info(String.format(
-                    "Plsyer %s authorized from refreshed session: expires at %s",
+                    "Player %s is authorized from a refreshed session: expires at %s",
+                    playerName,
                     Instant.ofEpochSecond(newToken.expiresAt()).atZone(ZoneId.systemDefault())
             ));
             return true;

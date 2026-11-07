@@ -11,6 +11,7 @@ import com.pixplaze.api.host.HostAddress;
 import com.pixplaze.api.nms.MinecraftServer;
 import com.pixplaze.api.reflection.Reflection;
 import com.pixplaze.api.state.ServerStateSnapshot;
+import com.pixplaze.config.PixplazeConfig;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import com.pixplaze.util.ServerFiles;
 import com.pixplaze.util.ServerUtils;
@@ -192,16 +193,16 @@ public class MinecraftServerDao implements MinecraftServerApi {
     public List<MinecraftServerHostInfo> getServerHosts() {
         final var config = plugin.getConfig();
         final var game = getServerAddress();
-        final var httpPort = config.getInt(PluginConfig.HTTP_PORT, 25566);
+        final var httpPort = config.getInt(PixplazeConfig.HTTP_PORT, 25566);
         final var hosts = new ArrayList<MinecraftServerHostInfo>();
 
         game.ifPresent(address -> hosts.add(MinecraftServerHostInfo.server(address.host(), address.portOr(server.getPort()))));
 
-        final var api = HostAddress.parse(config.getString(PluginConfig.PUBLIC_API))
+        final var api = HostAddress.parse(config.getString(PixplazeConfig.PUBLIC_API))
                 .orElseGet(() -> new HostAddress(game.map(HostAddress::host).orElse(""), null));
         hosts.add(new MinecraftServerHostInfo(null, api.host(), api.portOr(httpPort), MinecraftServerHostInfo.Type.API));
 
-        HostAddress.parse(config.getString(PluginConfig.PUBLIC_MAP))
+        HostAddress.parse(config.getString(PixplazeConfig.PUBLIC_MAP))
                 .filter(address -> address.port() != null)
                 .ifPresent(address -> hosts.add(new MinecraftServerHostInfo(null, address.host(), address.port(), MinecraftServerHostInfo.Type.MAP)));
         return hosts;

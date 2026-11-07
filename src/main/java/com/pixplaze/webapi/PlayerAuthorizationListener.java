@@ -18,7 +18,7 @@ public final class PlayerAuthorizationListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent event) {
-        authorization.onJoin(event.getPlayer(), false, false, check -> {});
+        authorization.onJoin(event.getPlayer(), check -> {});
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
