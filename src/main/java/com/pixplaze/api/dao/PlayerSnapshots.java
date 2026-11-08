@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.function.Function;
 
 /// Player snapshot for the heartbeat (п. 32 of the authorization design): every online player with the
 /// nickname, operator and vanish flags and the skin head ([SkinHeads]), sorted by UUID, and the hash of
@@ -27,10 +28,19 @@ final class PlayerSnapshots {
     /// Reads Bukkit API: call on the main thread.
     static List<MinecraftPlayerInfo> of(Collection<? extends Player> players) {
         return players.stream()
-                .map(player -> MinecraftPlayerInfo.presence(player.getUniqueId(), player.getName(), player.isOp(), isVanished(player),
-                        SkinHeads.head(player)))
+                .map(PlayerSnapshots::toPresence)
                 .sorted(Comparator.comparing(MinecraftPlayerInfo::uuid))
                 .toList();
+    }
+
+    private static <P extends Player> MinecraftPlayerInfo toPresence(P player) {
+        return MinecraftPlayerInfo.presence(
+                player.getUniqueId(),
+                player.getName(),
+                player.isOp(),
+                isVanished(player),
+                SkinHeads.head(player)
+        );
     }
 
     /// SHA-256 of the sorted snapshot. Opaque to web-api: it only compares it with the hash it stored.

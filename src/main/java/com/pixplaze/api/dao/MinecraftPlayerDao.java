@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 public class MinecraftPlayerDao {
 
@@ -90,6 +91,18 @@ public class MinecraftPlayerDao {
         return Arrays.stream(server.getOfflinePlayers())
                 .filter(MinecraftPlayerDao::isNamed)
                 .map(this::getPlayerInfo)
+                .toList();
+    }
+
+    public List<MinecraftPlayerInfo> findPlayers(String query) {
+        final var filterByQuery = (Predicate<? super MinecraftPlayerInfo>) (p) -> {
+            final var username = p.username().toLowerCase();
+            final var uuid = p.uuid().toString().toLowerCase();
+            final var string = query.toLowerCase();
+            return username.startsWith(string) || uuid.startsWith(string);
+        };
+        return getAllPlayers().stream()
+                .filter(filterByQuery)
                 .toList();
     }
 
