@@ -82,7 +82,6 @@ public final class PlayerAuthorization {
 
     /// Main thread: the player joined — the file is created or updated, the token checked.
     ///
-    /// @param untrustedIp   the IP is not the player's own (proxy without IP forwarding): every session needs a confirmation
     /// @param result        receives the outcome on the main thread
     public void onJoin(Player player, Consumer<Boolean> result) {
         executeAsync(() -> {
@@ -266,7 +265,6 @@ public final class PlayerAuthorization {
         executeSync(() -> Optional.ofNullable(plugin.getServer().getPlayer(id))
                 .ifPresent(player -> {
                     ConfirmationLinks.send(player, "Confirm the sign-in in Pixplaze", url, userCode);
-                    player.sendTitle("Unauthorized", "Check the link in chat", 10, 80, 10);
                 }));
     }
 

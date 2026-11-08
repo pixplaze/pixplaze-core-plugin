@@ -19,7 +19,6 @@ import org.bukkit.event.player.*;
 import org.bukkit.event.vehicle.VehicleEnterEvent;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.net.InetAddress;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,6 +59,7 @@ public final class AuthorizationGate implements Listener, PlayerAuthorization.Si
     /// Nicknames of authorized players online, lower case → UUID: read on the async pre-login thread
     private final Map<String, UUID> authorizedNames = new ConcurrentHashMap<>();
     private final Map<UUID, BukkitTask> kicks = new ConcurrentHashMap<>();
+    private final PermanentTitleSender permanentTitleSender;
     private boolean untrustedIpWarned;
 
     public AuthorizationGate(
@@ -76,12 +76,13 @@ public final class AuthorizationGate implements Listener, PlayerAuthorization.Si
         this.timeout = timeout;
         this.autoLogin = autoLogin;
         authorization.setEvents(this);
+        permanentTitleSender = new PermanentTitleSender(plugin, this::freezeTick);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPreLogin(AsyncPlayerPreLoginEvent event) {
-        if (event.getLoginResult() == AsyncPlayerPreLoginEvent.Result.ALLOWED
-                && authorizedNames.containsKey(event.getName().toLowerCase(Locale.ROOT))) {
+        if (event.getLoginResult() == AsyncPlayerPreLoginEvent.Result.ALLOWED &&
+                authorizedNames.containsKey(event.getName().toLowerCase(Locale.ROOT))) {
             event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, "This player is already on the server");
         }
     }
@@ -89,7 +90,7 @@ public final class AuthorizationGate implements Listener, PlayerAuthorization.Si
     @EventHandler(priority = EventPriority.LOWEST)
     public void onJoin(PlayerJoinEvent event) {
         final var player = event.getPlayer();
-        frozen.add(player.getUniqueId());
+        freeze(player);
         authorization.onJoin(player, isAuthorized -> {
             if (!player.isOnline()) {
                 return;
@@ -127,6 +128,7 @@ public final class AuthorizationGate implements Listener, PlayerAuthorization.Si
             release(player);
         } else {
             player.sendMessage(ChatColor.YELLOW + "Pixplaze is unavailable: you cannot play until the sign-in is confirmed. Try /pixplaze login later.");
+            player.sendMessage(ChatColor.YELLOW + "We are soooo sowwy :(:(:(:(");
         }
     }
 
@@ -155,12 +157,33 @@ public final class AuthorizationGate implements Listener, PlayerAuthorization.Si
         }
     }
 
+    private void freeze(Player player) {
+        frozen.add(player.getUniqueId());
+        permanentTitleSender.start(player);
+
+        player.setGravity(false); // Игрок зависает в воздухе, клиент больше не тянет его вниз
+        player.setAllowFlight(true);
+        player.setFlying(true);
+    }
+
+    private void freezeTick(Player player) {
+        AuthorizationTitles.sendUnauthorized(player);
+        player.setRemainingAir(player.getMaximumAir()); // Воздух всегда заполнен
+        player.setFireTicks(0); // Игрок визуально перестанет гореть
+    }
+
     private void release(Player player) {
         cancelKick(player.getUniqueId());
         authorizedNames.put(player.getName().toLowerCase(Locale.ROOT), player.getUniqueId());
+        permanentTitleSender.stop(player);
         if (frozen.remove(player.getUniqueId())) {
-            player.sendMessage(ChatColor.GREEN + "Signed in to Pixplaze, have a good game.");
+            AuthorizationTitles.sendAuthorized(player);
         }
+
+        player.setFallDistance(0.0f); // Сбрасываем накопленную высоту падения
+        player.setGravity(true);
+        player.setAllowFlight(false);
+        player.setFlying(false);
     }
 
     private void cancelKick(UUID id) {
@@ -179,17 +202,31 @@ public final class AuthorizationGate implements Listener, PlayerAuthorization.Si
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onMove(PlayerMoveEvent event) {
+        final Player player = event.getPlayer();
+
+        if (!isFrozen(player)) {
+            return;
+        }
+
         final Location from = event.getFrom();
         final Location to = event.getTo();
-        if (to != null && isFrozen(event.getPlayer())
-                && (from.getX() != to.getX() || from.getY() != to.getY() || from.getZ() != to.getZ())) {
-            // Looking around is allowed, moving is not
-            final var still = from.clone();
+        if (to == null) return;
+
+        double deltaX = Math.abs(from.getX() - to.getX());
+        double deltaY = Math.abs(from.getY() - to.getY());
+        double deltaZ = Math.abs(from.getZ() - to.getZ());
+
+        double epsilon = 0.001;
+
+        if (deltaX > epsilon || deltaY > epsilon || deltaZ > epsilon) {
+            // Игрок попытался сдвинуться дальше погрешности -> возвращаем назад
+            final Location still = from.clone();
             still.setYaw(to.getYaw());
             still.setPitch(to.getPitch());
             event.setTo(still);
         }
     }
+
 
     /// Teleports the player causes (pearls, chorus, portals). Plugin teleports stay — e.g. to spawn on join;
     /// commands are blocked anyway.
