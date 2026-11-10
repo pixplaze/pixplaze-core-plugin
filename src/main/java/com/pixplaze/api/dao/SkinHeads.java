@@ -43,13 +43,15 @@ final class SkinHeads {
     private static final Map<String, Entry> CACHE = new ConcurrentHashMap<>();
     /// `getPlayerProfile` appeared in 1.18.1: on an older server heads are off.
     private static volatile boolean supported = true;
+    private final PixplazeCorePlugin plugin;
 
-    private SkinHeads() {
+    SkinHeads(PixplazeCorePlugin plugin) {
+        this.plugin = plugin;
     }
 
     /// Head of the player's current skin; `null` — no skin texture (default skin), or not loaded yet.
     /// Reads Bukkit API: call on the main thread.
-    static String head(Player player) {
+    String head(Player player) {
         if (!supported) {
             return null;
         }
@@ -62,7 +64,7 @@ final class SkinHeads {
             url = skin.toString();
         } catch (LinkageError e) {
             supported = false;
-            PixplazeCorePlugin.getInstance().getLogger().warning(
+            plugin.getLogger().warning(
                     "Skin heads are disabled: the server has no player profile API (Spigot 1.18.1+ needed)");
             return null;
         }
@@ -76,7 +78,7 @@ final class SkinHeads {
         return null;
     }
 
-    private static void load(String url) {
+    private void load(String url) {
         final HttpRequest request;
         try {
             request = HttpRequest.newBuilder(URI.create(url)).timeout(TIMEOUT).GET().build();
@@ -100,9 +102,9 @@ final class SkinHeads {
                 });
     }
 
-    private static void failed(String url, Throwable error) {
+    private void failed(String url, Throwable error) {
         CACHE.put(url, new Entry(null, Instant.now().plus(RETRY_AFTER)));
-        PixplazeCorePlugin.getInstance().getLogger().log(Level.FINE,
+        plugin.getLogger().log(Level.FINE,
                 "Failed to load skin texture %s: %s".formatted(url, error.getMessage()));
     }
 

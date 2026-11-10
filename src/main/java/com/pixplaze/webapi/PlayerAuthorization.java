@@ -175,7 +175,7 @@ public final class PlayerAuthorization {
         final var playerUuid = player.getUniqueId();
         final var playerName = player.getName();
         final var playerIp = AddressResolver.ipOf(player);
-        final var isUntrustedIp = AddressResolver.isUntrusted(player);
+        final var isUntrustedIp = AddressResolver.isUntrusted(plugin, player);
         final var shouldCheckIp = config.authorization().enabled() && !ServerUtils.isLicensed(plugin.getServer());
 
         var session = loadOrCreate(playerUuid, playerName);

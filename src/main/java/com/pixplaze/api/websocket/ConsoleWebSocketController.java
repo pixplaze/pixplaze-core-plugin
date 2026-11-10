@@ -4,14 +4,15 @@ import com.pixplaze.auth.PluginAccess;
 import com.pixplaze.auth.PluginTokenVerifier;
 import com.pixplaze.auth.VerifiedToken;
 import com.pixplaze.message.ConsoleBuffer;
+import com.pixplaze.plugin.PixplazeCorePlugin;
 import io.javalin.websocket.WsMessageContext;
 
 /// Консоль администратора ({@code /console}): лог сервера и выполнение любых консольных команд.
 /// Только оператор: роль {@code RMOP} в токене и {@code isOp()} игрока на сервере.
 public class ConsoleWebSocketController extends MessageWebSocketController {
 
-    public ConsoleWebSocketController(ConsoleBuffer consoleBuffer, PluginTokenVerifier verifier) {
-        super("/console", consoleBuffer, verifier);
+    public ConsoleWebSocketController(PixplazeCorePlugin plugin, ConsoleBuffer consoleBuffer, PluginTokenVerifier verifier) {
+        super(plugin,"/console", consoleBuffer, verifier);
     }
 
     @Override

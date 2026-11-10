@@ -1,6 +1,7 @@
 package com.pixplaze.api.dao;
 
 import com.pixplaze.api.ext.data.player.MinecraftPlayerInfo;
+import com.pixplaze.plugin.PixplazeCorePlugin;
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.MetadataValue;
 
@@ -21,25 +22,29 @@ final class PlayerSnapshots {
 
     /// Metadata key vanish plugins (EssentialsX, SuperVanish, PremiumVanish) set on hidden players.
     private static final String VANISHED = "vanished";
+    private final PixplazeCorePlugin plugin;
+    private final SkinHeads skinHeads;
 
-    private PlayerSnapshots() {
+    PlayerSnapshots(PixplazeCorePlugin plugin) {
+        this.plugin = plugin;
+        this.skinHeads = new SkinHeads(plugin);
     }
 
     /// Reads Bukkit API: call on the main thread.
-    static List<MinecraftPlayerInfo> of(Collection<? extends Player> players) {
+    List<MinecraftPlayerInfo> of(Collection<? extends Player> players) {
         return players.stream()
-                .map(PlayerSnapshots::toPresence)
+                .map(this::toPresence)
                 .sorted(Comparator.comparing(MinecraftPlayerInfo::uuid))
                 .toList();
     }
 
-    private static <P extends Player> MinecraftPlayerInfo toPresence(P player) {
+    private <P extends Player> MinecraftPlayerInfo toPresence(P player) {
         return MinecraftPlayerInfo.presence(
                 player.getUniqueId(),
                 player.getName(),
                 player.isOp(),
                 isVanished(player),
-                SkinHeads.head(player)
+                skinHeads.head(player)
         );
     }
 

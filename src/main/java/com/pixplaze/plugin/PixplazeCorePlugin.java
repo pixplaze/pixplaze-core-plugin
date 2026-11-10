@@ -9,11 +9,9 @@ import com.pixplaze.exchange.ExchangeServer;
 import com.pixplaze.exchange.JavalinExchangeServer;
 import com.pixplaze.message.ChatBuffer;
 import com.pixplaze.message.ConsoleBuffer;
-import com.pixplaze.webapi.AuthorizationGate;
-import com.pixplaze.webapi.PixplazeCommand;
-import com.pixplaze.webapi.PixplazeConnection;
-import com.pixplaze.webapi.PlayerAuthorizationListener;
+import com.pixplaze.webapi.*;
 import io.javalin.Javalin;
+import org.bukkit.Bukkit;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -36,21 +34,42 @@ public final class PixplazeCorePlugin extends JavaPlugin {
     /// в {@link #onDisable()}. Создавать {@link JavaPlugin} вручную нельзя — его конструктор
     /// требует загрузки через PluginClassLoader сервера, поэтому при обращении к выключенному
     /// плагину честнее упасть, чем молча подсунуть неработоспособный объект.
+
     public static PixplazeCorePlugin getInstance() {
-        return Objects.requireNonNull(instance, "PixplazeCorePlugin is disabled");
+        // 1. Пытаемся взять стандартное статическое поле
+        if (instance != null) {
+            return instance;
+        }
+
+        // 2. Если оно null (баг ClassLoader), ищем плагин через менеджер сервисов Bukkit
+        var provider = Bukkit.getServicesManager().getRegistration(PixplazeCorePlugin.class);
+        if (provider != null) {
+            instance = provider.getProvider();
+            return instance;
+        }
+
+        // 3. Крайний случай: ищем плагин напрямую по его текстовому имени в системе
+        var plugin = Bukkit.getPluginManager().getPlugin("pixplaze-core"); // Укажите точное имя из plugin.yml
+        if (plugin instanceof PixplazeCorePlugin) {
+            instance = (PixplazeCorePlugin) plugin;
+            return instance;
+        }
+
+        throw new IllegalStateException("PixplazeCorePlugin is not loaded or disabled!");
     }
 
     public PixplazeConfig getPixplazeConfig() {
         return pixplazeConfig;
     }
 
-    @Override
-    public void onLoad() {
+    public PixplazeCorePlugin() {
+        super();
         instance = this;
     }
 
     @Override
     public void onEnable() {
+        instance = this;
         pixplazeConfig = PixplazeConfig.load(this);
         saveDefaultConfig();
         initMessageBuffers();
@@ -71,14 +90,15 @@ public final class PixplazeCorePlugin extends JavaPlugin {
     /// плагина никто не ссылается, и обращений к закрытому jar не будет.
     @Override
     public void onDisable() {
+        Bukkit.getScheduler().cancelTasks(this);
         Optional.ofNullable(pixplazeConnection)
                 .ifPresent(PixplazeConnection::stop);
 
-        Optional.ofNullable(consoleBuffer)
-                .ifPresent(ConsoleBuffer::detach);
-
-        Optional.ofNullable(chatBuffer)
-                .ifPresent(ChatBuffer::detach);
+//        Optional.ofNullable(consoleBuffer)
+//                .ifPresent(ConsoleBuffer::detach);
+//
+//        Optional.ofNullable(chatBuffer)
+//                .ifPresent(ChatBuffer::detach);
 
         Optional.ofNullable(exchangeServer)
                 .ifPresent(ExchangeServer::stop);
@@ -87,6 +107,7 @@ public final class PixplazeCorePlugin extends JavaPlugin {
                 .ifPresent(ServerStateSnapshot::stop);
 
         instance = null;
+        exchangeServer = null;
     }
 
     /// Подключение, вход игроков ({@code /pixplaze login}) и проверка их токенов при входе на сервер.
@@ -164,13 +185,87 @@ public final class PixplazeCorePlugin extends JavaPlugin {
         chatBuffer.attach();
     }
 
-    /// HTTP-сервер API плагина на {@code http.port}; {@code http.ip} — интерфейс ({@code auto} или пусто — все).
     private void initHttpServer() {
         final var httpConfig = getPixplazeConfig().http();
         final var ip = httpConfig.ip();
         final var port = httpConfig.port();
 
-        exchangeServer = new JavalinExchangeServer(ip.isBlank() || "auto".equalsIgnoreCase(ip) ? null : ip.trim(), port, tokenVerifier);
-        exchangeServer.start();
+        this.exchangeServer = new JavalinExchangeServer(
+                this,
+                ip,
+                port,
+                tokenVerifier
+        );
+
+        this.exchangeServer.start();
+    }
+
+    /// HTTP-сервер API плагина на {@code http.port}; {@code http.ip} — интерфейс ({@code auto} или пусто — все).
+    private void initHttpServerRuntime() {
+        final var httpConfig = getPixplazeConfig().http();
+        final var ip = httpConfig.ip();
+        final var port = httpConfig.port();
+
+        ExchangeServer<?> existingServer = (ExchangeServer<?>) System.getProperties().get("pixplaze.exchange.server");
+
+        if (existingServer != null) { // уже загружен
+            this.getLogger().info("Pixplaze API connecting to existed HTTP server..");
+            this.exchangeServer = (JavalinExchangeServer) existingServer;
+        } else { // загружается первый раз
+            this.getLogger().info("Pixplaze API creating a new HTTP server!");
+            this.exchangeServer = new JavalinExchangeServer(
+                    this,
+                    ip,
+                    port,
+                    tokenVerifier
+            );
+
+            this.exchangeServer.start();
+
+            System.getProperties().put("pixplaze.exchange.server", this.exchangeServer);
+
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                if (this.exchangeServer != null) {
+                    this.exchangeServer.stop();
+                }
+            }));
+        }
+    }
+
+    private void initHttpServerBukkitService() {
+        final var httpConfig = getPixplazeConfig().http();
+        final var ip = httpConfig.ip();
+        final var port = httpConfig.port();
+
+        final var serviceManager = Bukkit.getServicesManager();
+        final var serviceRegistration = serviceManager.getRegistration(ExchangeServer.class);
+
+        if (serviceRegistration != null) { // уже загружен
+            this.getLogger().info("Pixplaze API connecting to existed HTTP server..");
+            this.exchangeServer = serviceRegistration.getProvider();
+        } else { // загружается первый раз
+            this.getLogger().info("Pixplaze API creating a new HTTP server!");
+            this.exchangeServer = new JavalinExchangeServer(
+                    this,
+                    ip,
+                    port,
+                    tokenVerifier
+            );
+
+            this.exchangeServer.start();
+
+            serviceManager.register(
+                    ExchangeServer.class,
+                    this.exchangeServer,
+                    this,
+                    org.bukkit.plugin.ServicePriority.Highest
+            );
+
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                if (this.exchangeServer != null) {
+                    this.exchangeServer.stop();
+                }
+            }));
+        }
     }
 }

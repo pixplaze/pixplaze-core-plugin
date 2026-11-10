@@ -14,8 +14,7 @@ public class AddressResolver {
     }
 
     /// The address is not the player's own — loopback or private network, as behind a proxy without IP forwarding.
-    public static boolean isUntrusted(Player player) {
-        final var plugin = PixplazeCorePlugin.getInstance();
+    public static boolean isUntrusted(PixplazeCorePlugin plugin, Player player) {
         final InetAddress ip = addressOf(player);
         final var isIpUntrusted = isUntrustedAddress(ip);
         if (isIpUntrusted && isUntrustedAddressWarningSent.compareAndSet(false, true)) {

@@ -12,27 +12,19 @@ import com.pixplaze.exchange.JavalinExchangeServer;
 import com.pixplaze.exchange.JavalinGsonWrapper;
 import com.pixplaze.message.MessageBuffer;
 import com.pixplaze.plugin.PixplazeCorePlugin;
+import io.javalin.apibuilder.ApiBuilder;
 import io.javalin.json.JsonMapper;
-import io.javalin.router.JavalinDefaultRouting;
-import io.javalin.websocket.WsCloseContext;
-import io.javalin.websocket.WsCloseStatus;
-import io.javalin.websocket.WsConnectContext;
-import io.javalin.websocket.WsContext;
-import io.javalin.websocket.WsMessageContext;
+import io.javalin.websocket.*;
 import org.bukkit.Bukkit;
 import org.bukkit.event.server.ServerCommandEvent;
 import org.bukkit.plugin.IllegalPluginAccessException;
-import org.eclipse.jetty.websocket.api.WriteCallback;
+import org.eclipse.jetty.websocket.api.Callback;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /// Websocket-поток сообщений {@link MessageBuffer}: при подключении клиент получает историю первым
 /// кадром (JSON-массив {@link MinecraftMessageInfo}), дальше — каждое новое сообщение отдельным
@@ -59,7 +51,7 @@ public abstract class MessageWebSocketController implements ExchangeController<J
     /// Тот же маппер, что у Javalin; JSON собирается один раз на рассылку, а не на каждого клиента.
     private static final JsonMapper JSON = new JavalinGsonWrapper();
 
-    protected final PixplazeCorePlugin plugin = PixplazeCorePlugin.getInstance();
+    protected final PixplazeCorePlugin plugin;
     private final String path;
     private final MessageBuffer buffer;
     /// Открытые подключения: добавляют и удаляют потоки Jetty, рассылают потоки источника буфера.
@@ -71,7 +63,8 @@ public abstract class MessageWebSocketController implements ExchangeController<J
     private final PluginTokenVerifier verifier;
     private final ScheduledExecutorService scheduler;
 
-    protected MessageWebSocketController(String path, MessageBuffer buffer, PluginTokenVerifier verifier) {
+    protected MessageWebSocketController(PixplazeCorePlugin plugin, String path, MessageBuffer buffer, PluginTokenVerifier verifier) {
+        this.plugin = plugin;
         this.path = path;
         this.buffer = buffer;
         this.verifier = verifier;
@@ -92,12 +85,20 @@ public abstract class MessageWebSocketController implements ExchangeController<J
 
     /// Остановить таймеры: вызывается при остановке HTTP-сервера.
     public void stop() {
+        buffer.detach();
         scheduler.shutdownNow();
+        contexts.keySet().forEach(this::closeOnReloading);
+        contexts.clear();
+        try {
+            Thread.sleep(50);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Override
-    public void register(JavalinDefaultRouting routing) {
-        routing.ws(path, config -> {
+    public void register() {
+        ApiBuilder.ws(path, config -> {
             config.onConnect(this::onConnect);
             config.onClose(this::onClose);
             config.onMessage(this::onMessage);
@@ -195,8 +196,11 @@ public abstract class MessageWebSocketController implements ExchangeController<J
     }
 
     private void schedule(WsContext context, Duration delay, String reason) {
-        final var deadline = scheduler.schedule(() -> close(context, CLOSE_UNAUTHORIZED, reason),
-                Math.max(delay.toMillis(), 0), TimeUnit.MILLISECONDS);
+        final var deadline = scheduler.schedule(
+                () -> close(context, CLOSE_UNAUTHORIZED, reason),
+                Math.max(delay.toMillis(), 0),
+                TimeUnit.MILLISECONDS
+        );
         final var previous = deadlines.put(context, deadline);
         if (previous != null) {
             previous.cancel(false);
@@ -208,6 +212,10 @@ public abstract class MessageWebSocketController implements ExchangeController<J
         if (deadline != null) {
             deadline.cancel(false);
         }
+    }
+
+    private void closeOnReloading(WsContext context) {
+        close(context, 1001, "Reloading");
     }
 
     private void close(WsContext context, int code, String reason) {
@@ -270,9 +278,10 @@ public abstract class MessageWebSocketController implements ExchangeController<J
     /// замок не нужен. Возвращает, принят ли кадр; иначе клиент уже убран и отключён.
     private boolean send(WsContext context, String json) {
         try {
-            context.session.getRemote().sendString(json, new WriteCallback() {
+            context.session.sendText(json, new Callback() {
+
                 @Override
-                public void writeFailed(Throwable error) {
+                public void fail(Throwable error) {
                     drop(context, error);
                 }
             });

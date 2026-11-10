@@ -7,14 +7,10 @@ import com.pixplaze.api.websocket.ConsoleWebSocketController;
 import com.pixplaze.auth.PluginTokenVerifier;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import io.javalin.Javalin;
-import io.javalin.config.JavalinConfig;
-import io.javalin.config.RouterConfig;
-import org.eclipse.jetty.websocket.core.Configuration;
-import org.eclipse.jetty.websocket.server.JettyWebSocketServletFactory;
+import io.javalin.apibuilder.ApiBuilder;
 
 import java.time.Duration;
-
-import static io.javalin.apibuilder.ApiBuilder.path;
+import java.util.function.Consumer;
 
 public class JavalinExchangeServer implements ExchangeServer<Javalin> {
 
@@ -29,50 +25,71 @@ public class JavalinExchangeServer implements ExchangeServer<Javalin> {
     private final int port;
     private final ConsoleWebSocketController console;
     private final ChatWebSocketController chat;
+    private final PixplazeCorePlugin plugin;
+    private boolean isStarted = false;
 
     /// @param host     интерфейс, на котором слушать; {@code null} — все
     /// @param verifier проверка входящих токенов: все REST-маршруты и WebSocket требуют токен
-    public JavalinExchangeServer(String host, int port, PluginTokenVerifier verifier) {
+    public JavalinExchangeServer(PixplazeCorePlugin plugin, String host, int port, PluginTokenVerifier verifier) {
         this.host = host;
         this.port = port;
-        this.console = new ConsoleWebSocketController(PixplazeCorePlugin.getInstance().getConsoleBuffer(), verifier);
-        this.chat = new ChatWebSocketController(PixplazeCorePlugin.getInstance().getChatBuffer(), verifier);
-        this.javalin = initializeJavalin(new AccessFilter(verifier, PixplazeCorePlugin.getInstance().getLogger()));
+        this.plugin = plugin;
+        this.console = new ConsoleWebSocketController(plugin, plugin.getConsoleBuffer(), verifier);
+        this.chat = new ChatWebSocketController(plugin, plugin.getChatBuffer(), verifier);
+        this.javalin = initializeJavalin(new AccessFilter(verifier, plugin.getLogger()));
     }
 
     private Javalin initializeJavalin(AccessFilter accessFilter) {
         return Javalin.create(config -> {
-            config.showJavalinBanner = false;
+            config.startup.showJavalinBanner = false;
+//            config.startup.startupWatcherEnabled = false;
+            config.startup.showOldJavalinVersionWarning= false;
+            config.jetty.modifyServer(server -> {
+                server.setStopTimeout(100L);
+            });
+            config.jetty.modifyServletContextHandler(handler -> {
+                handler.setClassLoader(plugin.getClass().getClassLoader());
+            });
             config.router.ignoreTrailingSlashes = true;
-            config.router.mount(routing -> routing.before(accessFilter::handle));
-            config.router.mount(new PlayerController()::register);
-            config.router.mount(new ServerController()::register);
-            config.router.mount(console::register);
-            config.router.mount(chat::register);
-            config.jsonMapper(new JavalinGsonWrapper());
-            config.jetty.modifyWebSocketServletFactory(JavalinExchangeServer::limitOutgoing);
-        });
-    }
+            config.routes.apiBuilder(() -> {
+                // Регистрация глобального фильтра "before"
+                ApiBuilder.before(accessFilter::handle);
 
-    /// Очередь и тайм-аут исходящих websocket-кадров — силами Jetty. В Jetty 11 этих настроек нет
-    /// в публичном интерфейсе фабрики, но её реализация — {@link Configuration} ядра websocket.
-    /// Другая версия Jetty может устроить её иначе — тогда без ограничений, с предупреждением.
-    private static void limitOutgoing(JettyWebSocketServletFactory factory) {
-        if (factory instanceof Configuration configuration) {
-            configuration.setMaxOutgoingFrames(WS_MAX_OUTGOING_FRAMES);
-            configuration.setWriteTimeout(WS_WRITE_TIMEOUT);
-        } else {
-            PixplazeCorePlugin.getInstance().getLogger().warning(
-                    "WebSocket outgoing frame limit is not supported by this Jetty version: " + factory.getClass().getName());
-        }
+                // Регистрация контроллеров через ссылки на методы
+                new PlayerController(plugin).register();
+                new ServerController(plugin).register();
+                console.register();
+                chat.register();
+            });
+            config.jsonMapper(new JavalinGsonWrapper());
+
+            config.jetty.modifyWebSocketServletFactory(jettyWsConfig -> {
+                jettyWsConfig.setMaxOutgoingFrames(WS_MAX_OUTGOING_FRAMES);
+
+                // Задаем таймаут записи (в Javalin 7 используется java.time.Duration)
+//                jettyWsConfig.setWriteTimeout(Duration.ofMillis(WS_WRITE_TIMEOUT));
+
+            });
+        });
     }
 
     @Override
     public void start() {
-        if (host == null) {
-            javalin.start(port);
-        } else {
-            javalin.start(host, port);
+        if (isStarted) return;
+        try {
+            Thread.sleep(500);
+            if (host == null) {
+                javalin.start(port);
+            } else {
+                javalin.start(host, port);
+            }
+            isStarted = true;
+        } catch (IllegalStateException e) {
+            if (e.getMessage() != null && e.getMessage().contains(" zip ")) {
+                plugin.getLogger().warning("Accessing unloaded jar (zip file closed)!");
+            }
+        } catch (InterruptedException e) {
+            plugin.getLogger().warning("Could not wait for Pixplaze API to be started!");
         }
     }
 
@@ -82,13 +99,30 @@ public class JavalinExchangeServer implements ExchangeServer<Javalin> {
     /// ничего не ждал и от ошибки `zip file closed` не спасал.
     @Override
     public void stop() {
-        javalin.stop();
+        if (javalin == null) return;
+
         console.stop();
         chat.stop();
+        javalin.stop();
+
+        plugin.getLogger().warning("Waiting for API server to stop...");
+
+        try {
+            isStarted = false;
+            javalin.jettyServer().threadPool().join();
+        } catch (InterruptedException e) {
+            plugin.getLogger().warning(e.getMessage());
+        }
     }
 
     @Override
     public Javalin provide() {
         return javalin;
+    }
+
+    @Override
+    public void mount(Consumer<Javalin> routesConfig) {
+        // Если сервер уже работал (это перезапуск плагина), очищаем старые маршруты
+
     }
 }

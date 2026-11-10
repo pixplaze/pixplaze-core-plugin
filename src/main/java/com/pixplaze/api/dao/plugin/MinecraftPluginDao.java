@@ -2,6 +2,7 @@ package com.pixplaze.api.dao.plugin;
 
 import com.pixplaze.api.exception.PixplazeApiException;
 import com.pixplaze.api.ext.data.plugin.MinecraftPluginInfo;
+import com.pixplaze.plugin.PixplazeCorePlugin;
 import com.pixplaze.util.ServerFiles;
 import com.pixplaze.util.Utils;
 import org.bukkit.Bukkit;
@@ -18,6 +19,11 @@ import java.util.stream.Collectors;
 
 public class MinecraftPluginDao {
     private final Server server = Bukkit.getServer();
+    private final PixplazeCorePlugin plugin;
+
+    public MinecraftPluginDao(PixplazeCorePlugin plugin) {
+        this.plugin = plugin;
+    }
 
     public List<MinecraftPluginInfo> getEnabledPlugins() {
         return Arrays.stream(server.getPluginManager().getPlugins())

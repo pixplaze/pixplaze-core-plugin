@@ -7,6 +7,7 @@ import com.pixplaze.auth.PluginAccess;
 import com.pixplaze.auth.PluginTokenVerifier;
 import com.pixplaze.auth.VerifiedToken;
 import com.pixplaze.message.ChatBuffer;
+import com.pixplaze.plugin.PixplazeCorePlugin;
 import io.javalin.websocket.WsMessageContext;
 import org.bukkit.Bukkit;
 
@@ -26,11 +27,11 @@ public class ChatWebSocketController extends MessageWebSocketController {
     private static final String HELP = "Commands: /msg <player> <message> (/tell, /w), /me <action>, /list, /help";
 
     private final ChatBuffer chatBuffer;
-    private final MinecraftServerDao minecraftServerDao = new MinecraftServerDao();
-    private final MinecraftPlayerDao minecraftPlayerDao = new MinecraftPlayerDao();
+    private final MinecraftServerDao minecraftServerDao = new MinecraftServerDao(plugin);
+    private final MinecraftPlayerDao minecraftPlayerDao = new MinecraftPlayerDao(plugin);
 
-    public ChatWebSocketController(ChatBuffer chatBuffer, PluginTokenVerifier verifier) {
-        super("/chat", chatBuffer, verifier);
+    public ChatWebSocketController(PixplazeCorePlugin plugin, ChatBuffer chatBuffer, PluginTokenVerifier verifier) {
+        super(plugin, "/chat", chatBuffer, verifier);
         this.chatBuffer = chatBuffer;
     }
 

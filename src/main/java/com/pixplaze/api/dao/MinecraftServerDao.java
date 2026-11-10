@@ -35,13 +35,23 @@ public class MinecraftServerDao implements MinecraftServerApi {
 
     public static final String SERVER_ICON_NAME = "server-icon.png";
 
-    private final Logger logger = PixplazeCorePlugin.getInstance().getLogger();
-    private final PixplazeCorePlugin plugin = PixplazeCorePlugin.getInstance();
-    private final Server server = plugin.getServer();
+    private final PixplazeCorePlugin plugin;
+    private final Logger logger;
+    private final Server server;
     private final Reflection minecraftServer = Reflection.provide(MinecraftServer::produce);
     private final MinecraftServerCoreDao minecraftServerCoreDao = new MinecraftServerCoreDao();
-    private final MinecraftPlayerDao minecraftPlayerDao = new MinecraftPlayerDao();
-    private final MinecraftPluginDao minecraftPluginDao = new MinecraftPluginDao();
+    private final MinecraftPlayerDao minecraftPlayerDao;
+    private final MinecraftPluginDao minecraftPluginDao;
+    private PlayerSnapshots playerSnapshots;
+
+    public MinecraftServerDao(PixplazeCorePlugin plugin) {
+        this.plugin = plugin;
+        this.logger = plugin.getLogger();
+        this.server = plugin.getServer();
+        this.minecraftPlayerDao = new MinecraftPlayerDao(plugin);
+        this.minecraftPluginDao = new MinecraftPluginDao(plugin);
+        this.playerSnapshots = new PlayerSnapshots(plugin);
+    }
 
     @Override
     public MinecraftServerInfo getServerInfo(boolean retrieveThumbnail) {
@@ -93,7 +103,7 @@ public class MinecraftServerDao implements MinecraftServerApi {
     /// пинг игроков. Список здесь есть всегда; отправлять ли его, решает отправитель по хешу.
     /// Читает Bukkit API: вызывать из главного потока.
     public MinecraftServerHeartbeatInfo getHeartbeatInfo() {
-        final var players = PlayerSnapshots.of(server.getOnlinePlayers());
+        final var players = playerSnapshots.of(server.getOnlinePlayers());
         return new MinecraftServerHeartbeatInfo(
                 ServerUtils.isLicensed(server),
                 MinecraftServerStateInfo.heartbeat(

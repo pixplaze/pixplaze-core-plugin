@@ -45,8 +45,9 @@ public record PixplazeConfig(
     public record Http(String ip, int port) {
         public static Http load(PixplazeCorePlugin plugin) {
             final var config = plugin.getConfig();
+            final var ip = config.getString(HTTP_IP, "auto");
             return new Http(
-                    config.getString(HTTP_IP, "auto"),
+                    ip.equals("auto") || ip.trim().isBlank() ? "0.0.0.0" : ip,
                     config.getInt(HTTP_PORT, 25566)
             );
         }
