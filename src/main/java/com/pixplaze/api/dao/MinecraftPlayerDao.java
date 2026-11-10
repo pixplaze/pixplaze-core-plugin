@@ -15,8 +15,13 @@ import java.util.function.Predicate;
 
 public class MinecraftPlayerDao {
 
-    private final PixplazeCorePlugin plugin = PixplazeCorePlugin.getInstance();
-    private final Server server = plugin.getServer();
+    private final PixplazeCorePlugin plugin;
+    private final Server server;
+
+    public MinecraftPlayerDao(PixplazeCorePlugin plugin) {
+        this.plugin = plugin;
+        this.server = plugin.getServer();
+    }
 
     public MinecraftPlayerInfo getPlayerInfo(@Nonnull UUID uuid) {
         return getPlayerInfo(Objects.requireNonNull(server.getPlayer(uuid)));

@@ -5,9 +5,9 @@ import com.pixplaze.api.dao.MinecraftServerDao;
 import com.pixplaze.exchange.ExchangeController;
 import com.pixplaze.exchange.JavalinExchangeServer;
 import com.pixplaze.plugin.PixplazeCorePlugin;
+import io.javalin.apibuilder.ApiBuilder;
 import io.javalin.http.Context;
 import io.javalin.http.HttpStatus;
-import io.javalin.router.JavalinDefaultRouting;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -17,9 +17,15 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class ServerController implements ExchangeController<JavalinExchangeServer> {
-    private final PixplazeCorePlugin plugin = PixplazeCorePlugin.getInstance();
-    private final MinecraftServerDao minecraftServerDao = new MinecraftServerDao();
-    private final MinecraftPlayerDao minecraftPlayerDao = new MinecraftPlayerDao();
+    private final PixplazeCorePlugin plugin;
+    private final MinecraftServerDao minecraftServerDao;
+    private final MinecraftPlayerDao minecraftPlayerDao;
+
+    public ServerController(PixplazeCorePlugin plugin) {
+        this.plugin = plugin;
+        this.minecraftServerDao = new MinecraftServerDao(plugin);
+        this.minecraftPlayerDao = new MinecraftPlayerDao(plugin);
+    }
 
     public void getServerWorlds(Context context) {
         context.result("[%s]".formatted(plugin.getServer().getWorlds().stream()
@@ -94,11 +100,11 @@ public class ServerController implements ExchangeController<JavalinExchangeServe
     }
 
     @Override
-    public void register(JavalinDefaultRouting routing) {
-        routing.get("/server", this::handleServerInfoRequest);
-        routing.get("/server/state", this::handleServerStateRequest);
-        routing.get("/server/plugins/installed", this::handleInstalledPluginsRequest);
-        routing.get("/server/plugins/enabled", this::handleEnabledPluginsRequest);
-        routing.get("/server/players", this::handlePlayersRequest);
+    public void register() {
+        ApiBuilder.get("/server", this::handleServerInfoRequest);
+        ApiBuilder.get("/server/state", this::handleServerStateRequest);
+        ApiBuilder.get("/server/plugins/installed", this::handleInstalledPluginsRequest);
+        ApiBuilder.get("/server/plugins/enabled", this::handleEnabledPluginsRequest);
+        ApiBuilder.get("/server/players", this::handlePlayersRequest);
     }
 }

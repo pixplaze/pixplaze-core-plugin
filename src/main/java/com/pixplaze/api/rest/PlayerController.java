@@ -4,18 +4,19 @@ import com.pixplaze.api.dao.MinecraftPlayerDao;
 import com.pixplaze.exchange.ExchangeController;
 import com.pixplaze.exchange.JavalinExchangeServer;
 import com.pixplaze.plugin.PixplazeCorePlugin;
+import io.javalin.apibuilder.ApiBuilder;
 import io.javalin.http.Context;
 import io.javalin.http.HttpStatus;
-import io.javalin.router.JavalinDefaultRouting;
-import org.bukkit.Server;
 
 import java.util.Optional;
 import java.util.UUID;
 
 public class PlayerController implements ExchangeController<JavalinExchangeServer> {
-    private final PixplazeCorePlugin plugin = PixplazeCorePlugin.getInstance();
-    private final MinecraftPlayerDao minecraftPlayerDao = new MinecraftPlayerDao();
-    private final Server server = plugin.getServer();
+    private final MinecraftPlayerDao minecraftPlayerDao;
+
+    public PlayerController(PixplazeCorePlugin plugin) {
+        this.minecraftPlayerDao = new MinecraftPlayerDao(plugin);
+    }
 
     public void getPlayer(Context context) {
         try {
@@ -52,8 +53,8 @@ public class PlayerController implements ExchangeController<JavalinExchangeServe
     }
 
     @Override
-    public void register(JavalinDefaultRouting routing) {
-        routing.get("/players/{uuid}", this::getPlayer);
-        routing.get("/players", this::getPlayers);
+    public void register() {
+        ApiBuilder.get("/players/{uuid}", this::getPlayer);
+        ApiBuilder.get("/players", this::getPlayers);
     }
 }

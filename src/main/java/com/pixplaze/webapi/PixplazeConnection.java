@@ -11,6 +11,7 @@ import com.pixplaze.api.ext.data.server.MinecraftServerHeartbeatResponse;
 import com.pixplaze.api.ext.data.server.MinecraftServerInfo;
 import com.pixplaze.auth.KeySource;
 import com.pixplaze.plugin.PixplazeCorePlugin;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
@@ -207,6 +208,13 @@ public final class PixplazeConnection implements KeySource {
         Optional.ofNullable(pendingAuthorization).ifPresent(future -> future.cancel(true));
         players.stop();
         executor.shutdownNow();
+        try {
+            if (!executor.awaitTermination(1500, TimeUnit.MILLISECONDS)) {
+                Bukkit.getLogger().warning("[PixplazeCorePlugin] Пул потоков хартбита не успел закрыться вовремя!");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /// Main thread: reads the heartbeat body from Bukkit API and hands it to the network thread.
@@ -422,7 +430,7 @@ public final class PixplazeConnection implements KeySource {
 
     private MinecraftServerDao dao() {
         if (dao == null) {
-            dao = new MinecraftServerDao();
+            dao = new MinecraftServerDao(plugin);
         }
         return dao;
     }
