@@ -21,6 +21,7 @@ import javax.annotation.Nullable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -244,6 +245,10 @@ public class MinecraftServerDao implements MinecraftServerApi {
      */
     private @Nullable String getServerIconBase64() {
         final var serverIconPath = getServerIconPath();
+        // Иконка необязательна: без неё ImageIO бросает IIOException, и регистрация сервера не начиналась
+        if (!Files.isRegularFile(serverIconPath)) {
+            return null;
+        }
         try {
             return ServerFiles.imageToBase64(serverIconPath.toFile(), "png");
         } catch (NullPointerException | FileNotFoundException e) {
