@@ -7,6 +7,7 @@ import com.pixplaze.api.ext.data.message.MinecraftMessageInfo;
 import com.pixplaze.auth.InvalidTokenException;
 import com.pixplaze.auth.PluginTokenVerifier;
 import com.pixplaze.auth.VerifiedToken;
+import com.pixplaze.auth.VerifierNotReadyException;
 import com.pixplaze.exchange.ExchangeController;
 import com.pixplaze.exchange.JavalinExchangeServer;
 import com.pixplaze.exchange.JavalinGsonWrapper;
@@ -39,12 +40,15 @@ import java.util.concurrent.*;
 /// Авторизация — первым кадром `{"type":"AUTH","token":…}` с токеном доступа к плагину; история и рассылка —
 /// только после него. Без кадра за {@link #AUTH_TIMEOUT}, с неверным или истёкшим токеном — закрытие
 /// {@value #CLOSE_UNAUTHORIZED}; токен верный, но прав нет ({@link #isAllowed}) — {@value #CLOSE_FORBIDDEN}.
+/// Проверить токен пока нечем (сервер не подключён к Pixplaze, ключи не загружены) — {@value #CLOSE_TRY_AGAIN_LATER}:
+/// токен, возможно, верный, клиент переподключается с паузой и тем же токеном, а не обменивает новый в цикле.
 /// Новый кадр `AUTH` заменяет токен без переподключения; не прислали до {@code exp} — закрытие 4401.
 public abstract class MessageWebSocketController implements ExchangeController<JavalinExchangeServer> {
 
     /// Коды закрытия (диапазон 4000–4999 отведён приложениям, RFC 6455).
     static final int CLOSE_UNAUTHORIZED = 4401;
     static final int CLOSE_FORBIDDEN = 4403;
+    static final int CLOSE_TRY_AGAIN_LATER = WsCloseStatus.TRY_AGAIN_LATER.getCode();
     private static final Duration AUTH_TIMEOUT = Duration.ofSeconds(5);
     private static final String AUTH_TYPE = "AUTH";
 
@@ -155,6 +159,10 @@ public abstract class MessageWebSocketController implements ExchangeController<J
         final VerifiedToken verified;
         try {
             verified = verifier.verify(token);
+        } catch (VerifierNotReadyException e) {
+            plugin.getLogger().fine(() -> "WS %s AUTH deferred with %d: %s".formatted(path, CLOSE_TRY_AGAIN_LATER, e.getMessage()));
+            close(context, CLOSE_TRY_AGAIN_LATER, "Try again later");
+            return;
         } catch (InvalidTokenException e) {
             plugin.getLogger().fine(() -> "WS %s AUTH rejected with 4401: %s".formatted(path, e.getMessage()));
             close(context, CLOSE_UNAUTHORIZED, "Invalid token");

@@ -4,9 +4,11 @@ import com.pixplaze.auth.InvalidTokenException;
 import com.pixplaze.auth.PluginAccess;
 import com.pixplaze.auth.PluginTokenVerifier;
 import com.pixplaze.auth.VerifiedToken;
+import com.pixplaze.auth.VerifierNotReadyException;
 import io.javalin.http.Context;
 import io.javalin.http.ForbiddenResponse;
 import io.javalin.http.HandlerType;
+import io.javalin.http.ServiceUnavailableResponse;
 import io.javalin.http.UnauthorizedResponse;
 
 import java.util.Set;
@@ -16,7 +18,8 @@ import java.util.logging.Logger;
 /**
  * Every REST route of the plugin requires a token, there are no public ones (п. 28 of the authorization
  * design): `Authorization: Bearer` with a plugin access token or the web-api system token. No or bad
- * token — 401; a valid token without the right — 403. WebSocket routes authorize by their first frame.
+ * token — 401; a valid token without the right — 403; the token cannot be checked yet (server not registered,
+ * keys not loaded) — 503, the client retries with the same token. WebSocket routes authorize by their first frame.
  */
 public final class AccessFilter {
 
@@ -40,6 +43,9 @@ public final class AccessFilter {
         final VerifiedToken token;
         try {
             token = verifier.verify(header != null && header.startsWith(BEARER) ? header.substring(BEARER.length()) : null);
+        } catch (VerifierNotReadyException e) {
+            logger.fine(() -> "REST %s %s rejected with 503: %s".formatted(context.method(), context.path(), e.getMessage()));
+            throw new ServiceUnavailableResponse();
         } catch (InvalidTokenException e) {
             logger.fine(() -> "REST %s %s rejected with 401: %s".formatted(context.method(), context.path(), e.getMessage()));
             throw new UnauthorizedResponse();

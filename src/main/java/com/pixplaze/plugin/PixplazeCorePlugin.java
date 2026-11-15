@@ -94,14 +94,16 @@ public final class PixplazeCorePlugin extends JavaPlugin {
         Optional.ofNullable(pixplazeConnection)
                 .ifPresent(PixplazeConnection::stop);
 
-//        Optional.ofNullable(consoleBuffer)
-//                .ifPresent(ConsoleBuffer::detach);
-//
-//        Optional.ofNullable(chatBuffer)
-//                .ifPresent(ChatBuffer::detach);
-
         Optional.ofNullable(exchangeServer)
                 .ifPresent(ExchangeServer::stop);
+
+        // Контроллеры отцепляют буферы в stop(), но HTTP-сервера может и не быть (упал старт):
+        // тогда лог-фильтр и чат-листенер остались бы на выгруженном класслоадере. detach() идемпотентен.
+        Optional.ofNullable(consoleBuffer)
+                .ifPresent(ConsoleBuffer::detach);
+
+        Optional.ofNullable(chatBuffer)
+                .ifPresent(ChatBuffer::detach);
 
         Optional.ofNullable(serverStateSnapshot)
                 .ifPresent(ServerStateSnapshot::stop);

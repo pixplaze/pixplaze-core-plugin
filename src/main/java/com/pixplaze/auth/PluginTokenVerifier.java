@@ -25,8 +25,10 @@ import java.util.logging.Logger;
  * {@code aud} containing this server ({@code mc:server:{id}}), {@code exp}; roles via {@link AuthorityClaims}.
  *
  * <p>Keys are loaded when the server connects to Pixplaze and again on an unknown {@code kid}, at most once
- * per {@link #RELOAD_INTERVAL}: random {@code kid} values must not flood web-api. While no keys are loaded
- * (web-api unreachable, server not registered) every token is rejected and the error is logged.
+ * per {@link #RELOAD_INTERVAL}: random {@code kid} values must not flood web-api. While the verifier cannot decide
+ * — the server is not registered yet, no keys are loaded (web-api unreachable), or an unknown {@code kid} could
+ * not be looked up because of the reload interval — it throws {@link VerifierNotReadyException}: the token may
+ * be fine, the client retries later with it instead of exchanging a new one in a loop.
  */
 public final class PluginTokenVerifier {
 
@@ -47,13 +49,14 @@ public final class PluginTokenVerifier {
         this.logger = logger;
     }
 
-    /// @throws InvalidTokenException the token cannot be trusted
+    /// @throws VerifierNotReadyException the token cannot be checked yet, retry later
+    /// @throws InvalidTokenException     the token cannot be trusted
     public VerifiedToken verify(String token) throws InvalidTokenException {
         if (token == null || token.isBlank()) {
             throw new InvalidTokenException("No token");
         }
         final var serverId = source.flatMap(KeySource::serverId)
-                .orElseThrow(() -> new InvalidTokenException("The server is not registered in Pixplaze"));
+                .orElseThrow(() -> new VerifierNotReadyException("The server is not registered in Pixplaze yet"));
         try {
             final var claims = Jwts.parser()
                     .json(json)
@@ -69,8 +72,21 @@ public final class PluginTokenVerifier {
                     .getPayload();
             return new VerifiedToken(AuthorityClaims.read(claims), claims.getSubject(), playerName(claims),
                     claims.getExpiration().toInstant());
+        } catch (KeysNotReady e) {
+            throw new VerifierNotReadyException(e.getMessage(), e);
         } catch (JwtException | IllegalArgumentException | IllegalStateException e) {
+            if (e.getCause() instanceof KeysNotReady notReady) {
+                throw new VerifierNotReadyException(notReady.getMessage(), e);
+            }
             throw new InvalidTokenException(e.getMessage(), e);
+        }
+    }
+
+    /// The key locator cannot tell whether the {@code kid} is unknown: thrown out of jjwt, turned into
+    /// {@link VerifierNotReadyException} by {@link #verify}.
+    private static final class KeysNotReady extends RuntimeException {
+        KeysNotReady(String message) {
+            super(message, null, false, false);
         }
     }
 
@@ -88,23 +104,37 @@ public final class PluginTokenVerifier {
     }
 
     private Key keyOf(String kid) {
-        var key = kid == null ? null : keys.get(kid);
-        if (key == null) {
-            reloadIfAllowed();
-            key = kid == null ? null : keys.get(kid);
+        if (kid == null) {
+            throw new UnsupportedJwtException("No key id (kid)");
         }
-        if (key == null) {
-            throw new UnsupportedJwtException("Unknown key id (kid): " + kid);
+        var key = keys.get(kid);
+        if (key != null) {
+            return key;
         }
-        return key;
+        final var reloaded = reloadIfAllowed();
+        key = keys.get(kid);
+        if (key != null) {
+            return key;
+        }
+        // Unknown only if fresh keys were loaded and lack it; otherwise the keys may just be stale or missing
+        if (keys.isEmpty()) {
+            throw new KeysNotReady("Pixplaze signing keys are not loaded yet");
+        }
+        if (!reloaded) {
+            throw new KeysNotReady("Unknown key id (kid) " + kid + ", keys were reloaded less than "
+                    + RELOAD_INTERVAL.toSeconds() + " s ago");
+        }
+        throw new UnsupportedJwtException("Unknown key id (kid): " + kid);
     }
 
-    private void reloadIfAllowed() {
+    /// Whether this call loaded the keys (successfully or not); {@code false} — the reload interval has not passed.
+    private boolean reloadIfAllowed() {
         synchronized (reloadLock) {
             if (Instant.now().isBefore(lastReload.plus(RELOAD_INTERVAL))) {
-                return;
+                return false;
             }
             load();
+            return true;
         }
     }
 
