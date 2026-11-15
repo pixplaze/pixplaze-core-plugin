@@ -73,24 +73,17 @@ public class JavalinExchangeServer implements ExchangeServer<Javalin> {
         });
     }
 
+    /// Ошибка старта (порт занят, неверный адрес) не глотается: {@code onEnable} падает честно,
+    /// а не оставляет плагин включённым без API и с пустым логом.
     @Override
     public void start() {
         if (isStarted) return;
-        try {
-            Thread.sleep(500);
-            if (host == null) {
-                javalin.start(port);
-            } else {
-                javalin.start(host, port);
-            }
-            isStarted = true;
-        } catch (IllegalStateException e) {
-            if (e.getMessage() != null && e.getMessage().contains(" zip ")) {
-                plugin.getLogger().warning("Accessing unloaded jar (zip file closed)!");
-            }
-        } catch (InterruptedException e) {
-            plugin.getLogger().warning("Could not wait for Pixplaze API to be started!");
+        if (host == null) {
+            javalin.start(port);
+        } else {
+            javalin.start(host, port);
         }
+        isStarted = true;
     }
 
     /// {@code javalin.stop()} синхронный: внутри он зовёт {@code Server.stop()} Jetty,
