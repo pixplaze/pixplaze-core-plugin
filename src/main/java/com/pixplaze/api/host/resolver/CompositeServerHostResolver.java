@@ -1,4 +1,6 @@
-package com.pixplaze.api.host;
+package com.pixplaze.api.host.resolver;
+
+import com.pixplaze.api.host.HostAddress;
 
 import java.util.List;
 import java.util.Optional;

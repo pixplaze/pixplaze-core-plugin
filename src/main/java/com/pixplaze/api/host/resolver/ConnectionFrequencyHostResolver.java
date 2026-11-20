@@ -1,5 +1,7 @@
-package com.pixplaze.api.host;
+package com.pixplaze.api.host.resolver;
 
+import com.pixplaze.api.host.HostAddress;
+import com.pixplaze.api.host.HostNames;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.event.EventHandler;

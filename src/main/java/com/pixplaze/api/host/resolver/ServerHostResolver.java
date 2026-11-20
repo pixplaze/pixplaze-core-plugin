@@ -1,4 +1,7 @@
-package com.pixplaze.api.host;
+package com.pixplaze.api.host.resolver;
+
+import com.pixplaze.api.host.HostAddress;
+import com.pixplaze.plugin.PixplazeCorePlugin;
 
 import java.util.Optional;
 
@@ -6,7 +9,7 @@ import java.util.Optional;
 ///
 /// Сам Minecraft-сервер свой внешний домен не знает, поэтому источники разные
 /// (конфиг, частота адресов из handshake и т.п.). Конкретная реализация выбирается
-/// фабрикой {@link ServerHostResolvers} в зависимости от условий окружения.
+/// фабрикой {@link ServerHostResolverFactory} в зависимости от условий окружения.
 public interface ServerHostResolver {
 
     /// @return публичный адрес (домен и, если источник его знает, внешний порт), либо {@link Optional#empty()},
@@ -16,5 +19,9 @@ public interface ServerHostResolver {
     /// Человекочитаемое имя источника — для логов/диагностики.
     default String source() {
         return getClass().getSimpleName();
+    }
+
+    static ServerHostResolver create(PixplazeCorePlugin plugin) {
+        return ServerHostResolverFactory.create(plugin);
     }
 }

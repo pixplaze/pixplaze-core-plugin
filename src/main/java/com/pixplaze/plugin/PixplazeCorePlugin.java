@@ -1,7 +1,6 @@
 package com.pixplaze.plugin;
 
-import com.pixplaze.api.host.ServerHostResolver;
-import com.pixplaze.api.host.ServerHostResolvers;
+import com.pixplaze.api.host.resolver.ServerHostResolver;
 import com.pixplaze.api.state.ServerStateSnapshot;
 import com.pixplaze.auth.PluginTokenVerifier;
 import com.pixplaze.config.PixplazeConfig;
@@ -149,7 +148,7 @@ public final class PixplazeCorePlugin extends JavaPlugin {
         return chatBuffer;
     }
 
-    /// Резолвер публичного хоста сервера. Реализация выбрана {@link ServerHostResolvers}
+    /// Резолвер публичного хоста сервера.
     /// в {@link #onEnable()} по условиям окружения (конфиг/прокси/подключения).
     public ServerHostResolver getServerHostResolver() {
         return serverHostResolver;
@@ -164,7 +163,7 @@ public final class PixplazeCorePlugin extends JavaPlugin {
     }
 
     private void initServerHostResolver() {
-        serverHostResolver = ServerHostResolvers.create(this);
+        serverHostResolver = ServerHostResolver.create(this);
     }
 
     /// Снимок состояния сервера, обновляемый из главного потока. HTTP-слой читает значения
