@@ -12,6 +12,7 @@ import java.util.Optional;
 final class ServerCredentialsStore {
 
     private final Path file;
+    private volatile ServerCredentials serverCredentials;
 
     ServerCredentialsStore(Path file) {
         this.file = file;
@@ -22,13 +23,24 @@ final class ServerCredentialsStore {
             return Optional.empty();
         }
         try {
-            return Optional.ofNullable(WebApiHttp.json.fromJson(Files.readString(file, StandardCharsets.UTF_8), ServerCredentials.class));
+            final var serverCredentials = WebApiHttp.json.fromJson(Files.readString(file, StandardCharsets.UTF_8), ServerCredentials.class);
+            this.serverCredentials = serverCredentials;
+            return Optional.ofNullable(serverCredentials);
         } catch (IOException | JsonParseException e) {
             throw new IllegalStateException("Cannot read " + file + ": " + e.getMessage(), e);
         }
     }
 
-    void save(ServerCredentials credentials) {
-        AtomicFiles.write(file, WebApiHttp.json.toJson(credentials));
+    void save(ServerCredentials serverCredentials) {
+        this.serverCredentials = serverCredentials;
+        AtomicFiles.write(file, WebApiHttp.json.toJson(serverCredentials));
+    }
+
+    boolean isRegistered() {
+        return this.serverCredentials != null && serverCredentials.minecraftServerId() != null;
+    }
+
+    boolean isAuthorized() {
+        return isRegistered() && serverCredentials.hasTokens();
     }
 }

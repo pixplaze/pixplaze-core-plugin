@@ -53,7 +53,7 @@ public final class PixplazeConnection implements KeySource {
     private final PixplazeCorePlugin plugin;
     private final Logger logger;
     private final HttpPixplazeWebApi api;
-    private final ServerCredentialsStore store;
+    private final ServerCredentialsStore serverCredentialsStore;
     private final ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> {
         final var thread = new Thread(runnable, "Pixplaze web-api");
         thread.setDaemon(true);
@@ -73,7 +73,7 @@ public final class PixplazeConnection implements KeySource {
     /// A refusal or an unconfirmed link: no attempts until `/pixplaze connect` (or a restart)
     private boolean gaveUp;
     /// credentials.json cannot be read: `/pixplaze connect` must not overwrite it
-    private boolean credentialsBroken;
+    private boolean isCredentialsBroken;
     /// Link of the server confirmation while it waits; operators who ask to connect get it again
     private volatile ServerLink serverLink;
 
@@ -88,7 +88,7 @@ public final class PixplazeConnection implements KeySource {
         this.plugin = plugin;
         this.logger = plugin.getLogger();
         this.api = new HttpPixplazeWebApi(webApiUrl);
-        this.store = new ServerCredentialsStore(plugin.getDataFolder().toPath().resolve("credentials.json"));
+        this.serverCredentialsStore = new ServerCredentialsStore(plugin.getDataFolder().toPath().resolve("credentials.json"));
         this.players = new PlayerAuthorization(plugin, api, executor, this::serverId);
     }
 
@@ -152,7 +152,7 @@ public final class PixplazeConnection implements KeySource {
             final var link = serverLink;
             if (isConnected()) {
                 reply.accept("The server is already connected to Pixplaze.");
-            } else if (credentialsBroken) {
+            } else if (isCredentialsBroken) {
                 reply.accept("credentials.json cannot be read: fix or delete it and restart the server.");
             } else if (pendingAuthorization != null && !pendingAuthorization.isDone()) {
                 reply.accept("The server connection waits for confirmation.");
@@ -173,10 +173,10 @@ public final class PixplazeConnection implements KeySource {
     private void report(Level level, String message) {
         logger.log(level, message);
         final var color = level.intValue() >= Level.WARNING.intValue() ? ChatColor.YELLOW : ChatColor.GRAY;
-        toOperators(player -> player.sendMessage(color + "[Pixplaze] " + message));
+        sendMessageToOperators(player -> player.sendMessage(color + "[Pixplaze] " + message));
     }
 
-    private void toOperators(Consumer<Player> action) {
+    private void sendMessageToOperators(Consumer<Player> action) {
         onMainThread(() -> plugin.getServer().getOnlinePlayers().stream().filter(Player::isOp).forEach(action));
     }
 
@@ -280,11 +280,11 @@ public final class PixplazeConnection implements KeySource {
         try {
             final var tokens = api.authorization().server().refresh(credentials.refreshToken());
             // The refresh token is single-use: the new pair is on disk before anything uses it
-            saveCredentials(new ServerCredentials(credentials.minecraftServerId(), tokens.accessToken(), tokens.refreshToken()));
+            saveServerCredentials(new ServerCredentials(credentials.minecraftServerId(), tokens.accessToken(), tokens.refreshToken()));
             return true;
         } catch (OAuthException e) {
             logger.warning("Refresh token rejected by Pixplaze (" + e.getMessage() + "): the server must be authorized again");
-            saveCredentials(credentials.withoutTokens());
+            saveServerCredentials(credentials.withoutTokens());
             return false;
         }
     }
@@ -296,52 +296,43 @@ public final class PixplazeConnection implements KeySource {
             return;
         }
 
-        final var serverInfo = callOnMainThread(() -> dao().getServerInfo(true));
+        final var serverInfo = callOnMainThread(this::getServerInfo);
         if (serverInfo == null) {
             return;
         }
 
-        final var serverId = credentials == null ? null : credentials.minecraftServerId();
-        final var codes = serverId == null ? InviteCodes.candidates(serverInfo.motd()) : List.<String>of();
-        if (serverId == null && (codes.isEmpty() || Objects.equals(triedMotd, serverInfo.motd()))) {
-            if (!Objects.equals(triedMotd, serverInfo.motd())) {
-                triedMotd = serverInfo.motd();
-                report(Level.WARNING, "No Pixplaze bid code in the server MOTD: put the code of your bid into motd in"
-                        + " server.properties and restart the server (the code can be removed after registration), or run"
-                        + " /pixplaze connect after changing the MOTD by a plugin");
-            }
-            return;
-        }
-
-        // Re-authorization replaces stored addresses: only complete ones are sent. Registration may send an API
-        // entry without the address — Pixplaze fills it from the bid.
-        final var hosts = serverInfo.hosts().stream()
-                .filter(host -> serverId == null || (host.address() != null && !host.address().isBlank()))
-                .toList();
-        final var registrationInfo = MinecraftServerInfo.builder(serverInfo).hosts(hosts).build();
-        final var attempts = serverId == null
-                ? codes.stream().map(code -> new MinecraftServerAuthorizationDetails(code, registrationInfo)).toList()
-                : List.of(new MinecraftServerAuthorizationDetails(null, MinecraftServerInfo.builder()
-                        .id(serverId)
-                        .hosts(hosts.isEmpty() ? null : hosts)
-                        .isLicense(serverInfo.isLicense())
-                        .build()));
+        final var serverId = serverCredentialsStore.isRegistered() ? credentials.minecraftServerId() : null;
 
         try {
-            final var pending = startAuthorization(attempts);
+            final var authorizationDetailsCandidates = buildAuthorizationDetailsCandidates(serverInfo);
+
+            if (authorizationDetailsCandidates.isEmpty()) {
+                report(
+                        Level.WARNING,
+                        "No Pixplaze bid code in the server MOTD: put the code of your bid into motd in " +
+                        "server.properties and restart the server (the code can be removed after registration), or run " +
+                        "/pixplaze connect after changing the MOTD by a plugin"
+                );
+            }
+
+            final var pending = startAuthorization(authorizationDetailsCandidates);
             // The codes of this MOTD got an answer: the next attempt waits for another MOTD (network errors retry)
             triedMotd = serverInfo.motd();
             if (pending == null) {
-                report(Level.WARNING, "None of " + codes + " in the server MOTD is a code of an open Pixplaze bid:"
-                        + " check the code in the web app, fix the MOTD and restart the server");
+                report(
+                        Level.WARNING,
+                        "No registration codes found in server MOTD (code from bid): " +
+                        "check the code in the application, fix the MOTD and restart the server");
                 return;
             }
             final var response = pending.response();
             final var link = new ServerLink(ConfirmationLinks.clickable(response.verificationUriComplete()), response.userCode());
             serverLink = link;
-            logger.info("Confirm the server in Pixplaze: " + link.url()
-                    + " (code " + link.userCode() + ", valid " + response.expiresIn() + " s)");
-            toOperators(player -> ConfirmationLinks.send(player, "Confirm the server in Pixplaze", link.url(), link.userCode()));
+            logger.info(
+                    "Confirm the server in Pixplaze: " + link.url() + " " +
+                    "(code " + link.userCode() + ", valid " + response.expiresIn() + " s)"
+            );
+            sendMessageToOperators(player -> ConfirmationLinks.send(player, "Confirm the server in Pixplaze", link.url(), link.userCode()));
             pendingAuthorization = pending.await(executor);
             pendingAuthorization.whenComplete((tokens, error) -> {
                 serverLink = null;
@@ -349,22 +340,73 @@ public final class PixplazeConnection implements KeySource {
             });
         } catch (OAuthException e) {
             if (e.error() == OAuthError.SERVER_ERROR) {
-                report(Level.WARNING, "Pixplaze failed to start the server authorization, retrying in a minute: " + e.getMessage());
+                report(
+                        Level.WARNING,
+                        "Pixplaze failed to start the server authorization, retrying in a minute: " + e.getMessage()
+                );
                 return;
             }
             gaveUp = true;
-            report(Level.SEVERE, "Pixplaze rejected the server authorization request: " + e.getMessage()
-                    + ". Fix it and run /pixplaze connect");
+            report(
+                    Level.SEVERE,
+                    "Pixplaze rejected the server authorization request: " + e.getMessage() + ". " +
+                    "Fix it and run /pixplaze connect"
+            );
         } catch (WebApiException e) {
             logger.warning("Cannot start the server authorization: " + e.getMessage());
         }
     }
 
+    private MinecraftServerInfo getServerInfo() {
+        return dao().getServerInfo(true);
+    }
+
+    private List<MinecraftServerAuthorizationDetails> buildAuthorizationDetailsCandidates(MinecraftServerInfo serverInfo) {
+        if (serverCredentialsStore.isRegistered()) {
+            return buildAuthorizationDetails(serverInfo);
+        } else {
+            return buildRegistrationDetails(serverInfo);
+        }
+    }
+
+    /// Builds several [MinecraftServerAuthorizationDetails] candidates for case if this server is not registered yet
+    /// @return list of [MinecraftServerAuthorizationDetails] candidates
+    /// with different server bid codes required in registration process
+    private List<MinecraftServerAuthorizationDetails> buildRegistrationDetails(
+            MinecraftServerInfo serverInfo
+    ) {
+        final var codes = InviteCodes.candidates(serverInfo.motd());
+        final var isMotdTried = Objects.equals(triedMotd, serverInfo.motd());
+
+        if (codes.isEmpty()) {
+            triedMotd = serverInfo.motd();
+            return List.of();
+        }
+
+        if (!isMotdTried) {
+            return List.of();
+        }
+
+        return codes.stream()
+                .map(code -> MinecraftServerAuthorizationDetails.registration(code, serverInfo))
+                .toList();
+    }
+
+    /// Builds a single [MinecraftServerAuthorizationDetails] candidate with assigned server ID.
+    /// @return a singleton [MinecraftServerAuthorizationDetails] list
+    private List<MinecraftServerAuthorizationDetails> buildAuthorizationDetails(
+            MinecraftServerInfo serverInfo
+    ) {
+        final var serverWithIdInfo = serverInfo.withId(credentials.minecraftServerId());
+        return List.of(MinecraftServerAuthorizationDetails.authorization(serverWithIdInfo));
+    }
+
     /// Starts the device flow with the first details web-api accepts: the MOTD may hold words that only look like
     /// a code. {@code null} — every candidate was rejected as a wrong code.
     private PendingAuthorization<VerifiableAuthorizationTokenInfo> startAuthorization(
-            List<MinecraftServerAuthorizationDetails> attempts) {
-        for (final var details : attempts) {
+            List<MinecraftServerAuthorizationDetails> authorizationDetailsCandidates
+    ) {
+        for (final var details : authorizationDetailsCandidates) {
             try {
                 return api.authorization().server().authorize(details);
             } catch (OAuthException e) {
@@ -380,7 +422,7 @@ public final class PixplazeConnection implements KeySource {
     private void onAuthorized(Long knownServerId, VerifiableAuthorizationTokenInfo tokens, Throwable error) {
         if (error == null) {
             final var serverId = Optional.ofNullable(JwtPayload.of(tokens.accessToken()).minecraftServerId()).orElse(knownServerId);
-            saveCredentials(new ServerCredentials(serverId, tokens.accessToken(), tokens.refreshToken()));
+            saveServerCredentials(new ServerCredentials(serverId, tokens.accessToken(), tokens.refreshToken()));
             report(Level.INFO, "The server is connected to Pixplaze (id " + serverId + ")");
             notifyConnected();
             return;
@@ -401,19 +443,19 @@ public final class PixplazeConnection implements KeySource {
             // A failure of web-api or the network, not a decision: the next tick tries again with the same MOTD codes
             triedMotd = null;
             logger.log(Level.WARNING, "Server authorization failed: " + cause.getMessage(), cause);
-            toOperators(player -> player.sendMessage(ChatColor.YELLOW + "[Pixplaze] Server authorization failed, retrying in a minute"));
+            sendMessageToOperators(player -> player.sendMessage(ChatColor.YELLOW + "[Pixplaze] Server authorization failed, retrying in a minute"));
         }
     }
 
     private void loadCredentials() {
         try {
-            credentials = store.load().orElse(null);
-            if (credentials != null && credentials.hasTokens()) {
+            credentials = serverCredentialsStore.load().orElse(null);
+            if (serverCredentialsStore.isAuthorized()) {
                 notifyConnected();
             }
         } catch (IllegalStateException e) {
             gaveUp = true;
-            credentialsBroken = true;
+            isCredentialsBroken = true;
             logger.severe(e.getMessage() + ": fix or delete the file and restart the server");
         }
     }
@@ -423,8 +465,8 @@ public final class PixplazeConnection implements KeySource {
         CompletableFuture.runAsync(onConnected);
     }
 
-    private void saveCredentials(ServerCredentials next) {
-        store.save(next);
+    private void saveServerCredentials(ServerCredentials next) {
+        serverCredentialsStore.save(next);
         credentials = next;
     }
 

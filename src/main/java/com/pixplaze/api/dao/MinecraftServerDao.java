@@ -203,20 +203,25 @@ public class MinecraftServerDao implements MinecraftServerApi {
     /// - MAP — только {@code public.map} с портом.
     public List<MinecraftServerHostInfo> getServerHosts() {
         final var config = plugin.getConfig();
-        final var game = getServerAddress();
+        final var serverAddress = getServerAddress();
         final var httpPort = config.getInt(PixplazeConfig.HTTP_PORT, 25566);
         final var hosts = new ArrayList<MinecraftServerHostInfo>();
 
-        game.ifPresent(address -> hosts.add(MinecraftServerHostInfo.server(address.host(), address.portOr(server.getPort()))));
+        serverAddress.ifPresent(address -> hosts.add(MinecraftServerHostInfo.server(address.host(), address.portOr(server.getPort()))));
 
-        final var api = HostAddress.parse(config.getString(PixplazeConfig.PUBLIC_API))
-                .orElseGet(() -> new HostAddress(game.map(HostAddress::host).orElse(""), null));
+        final var api = HostAddress.parse(config.getString(PixplazeConfig.API_API))
+                .orElseGet(() -> new HostAddress(serverAddress.map(HostAddress::host).orElse(""), null));
         hosts.add(new MinecraftServerHostInfo(null, api.host(), api.portOr(httpPort), MinecraftServerHostInfo.Type.API));
 
-        HostAddress.parse(config.getString(PixplazeConfig.PUBLIC_MAP))
+        HostAddress.parse(config.getString(PixplazeConfig.API_MAP))
                 .filter(address -> address.port() != null)
                 .ifPresent(address -> hosts.add(new MinecraftServerHostInfo(null, address.host(), address.port(), MinecraftServerHostInfo.Type.MAP)));
         return hosts;
+    }
+
+    private String resolveApiHost() {
+        final var config = plugin.getPixplazeConfig();
+        config.api().api()
     }
 
     public Double getCurrentTps() {
