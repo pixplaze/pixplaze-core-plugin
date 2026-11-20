@@ -1,5 +1,6 @@
 package com.pixplaze.config;
 
+import com.pixplaze.api.exception.PixplazeStartupException;
 import com.pixplaze.plugin.PixplazeCorePlugin;
 import com.pixplaze.util.ServerUtils;
 import org.bukkit.configuration.ConfigurationSection;
@@ -16,9 +17,9 @@ public record PixplazeConfig(
         Authorization authorization
 ) {
     public static final String GATEWAY = "pixplaze.gateway";
-    public static final String PUBLIC_HOST = "api.host";
-    public static final String PUBLIC_MAP = "api.map";
-    public static final String PUBLIC_API = "api.api";
+    public static final String API_HOST = "api.host";
+    public static final String API_MAP = "api.map";
+    public static final String API_API = "api.api";
     public static final String HTTP_IP = "http.ip";
     public static final String HTTP_PORT = "http.port";
     public static final String AUTHORIZATION_ENABLED = "authorization.enabled";
@@ -34,10 +35,15 @@ public record PixplazeConfig(
     public record Api(String host, String map, String api) {
         public static Api load(PixplazeCorePlugin plugin) {
             final var config = plugin.getConfig();
+
+            final var host = config.getString(API_HOST);
+            final var map = config.getString(API_MAP);
+            final var api = config.getString(API_API);
+
             return new Api(
-                    config.getString(PUBLIC_HOST, "localhost"),
-                    config.getString(PUBLIC_MAP, "map"),
-                    config.getString(PUBLIC_API, "api")
+                    host,
+                    map,
+                    api
             );
         }
     }
@@ -128,5 +134,20 @@ public record PixplazeConfig(
             config.setInlineComments(key, defaults.getInlineComments(key));
         }
         return added;
+    }
+
+    private static <T> T requires(T value, String path) {
+        if (value == null) {
+            throw new PixplazeStartupException("Could not load pixplaze plugin: '%s' is required!");
+        }
+
+        if (value instanceof String) {
+            final var string = ((String) value);
+            if (string.isBlank() || string.isEmpty()) {
+                throw new PixplazeStartupException("");
+            }
+        }
+
+        return value;
     }
 }

@@ -1,4 +1,4 @@
-package com.pixplaze.api.host;
+package com.pixplaze.api.host.resolver;
 
 import com.pixplaze.config.PixplazeConfig;
 import com.pixplaze.plugin.PixplazeCorePlugin;
@@ -15,33 +15,40 @@ import com.pixplaze.util.ServerUtils;
 ///
 /// Если при этом детектится прокси, а конфиг пуст — печатает предупреждение: за Velocity/без
 /// forwarding автоопределение хост не найдёт, и {@code public.host} придётся задать вручную.
-public final class ServerHostResolvers {
+public final class ServerHostResolverFactory {
 
-    public static final String CONFIG_PATH = PixplazeConfig.PUBLIC_HOST;
+    static final String CONFIG_PATH = PixplazeConfig.API_HOST;
 
-    private ServerHostResolvers() {
+    private ServerHostResolverFactory() {
     }
 
-    public static ServerHostResolver create(PixplazeCorePlugin plugin) {
+    static ServerHostResolver create(PixplazeCorePlugin plugin) {
         final var configured = new ConfiguredServerHostResolver(plugin, CONFIG_PATH);
 
         if (configured.resolve().isPresent()) {
-            plugin.getLogger().info("Server host source: %s = %s"
-                    .formatted(configured.source(), configured.resolve().orElseThrow()));
+            plugin.getLogger().info(String.format(
+                    "Server host source: %s = %s",
+                    configured.source(),
+                    configured.resolve().orElseThrow()
+            ));
             return configured;
         }
 
         if (ServerUtils.isProxied()) {
-            plugin.getLogger().warning(("Server appears to be behind a proxy but '%s' is not set in config.yml. "
-                    + "Automatic host detection via handshake is unreliable behind proxies (especially Velocity). "
-                    + "Set '%s' explicitly. Falling back to best-effort detection by player connections.")
-                    .formatted(CONFIG_PATH, CONFIG_PATH));
+            plugin.getLogger().warning(String.format(
+                    "Server appears to be behind a proxy but '%s' is not set in config.yml. " +
+                    "Automatic host detection via handshake is unreliable behind proxies (especially Velocity). " +
+                    "Set '%s' explicitly. Falling back to best-effort detection by player connections.",
+                    CONFIG_PATH, CONFIG_PATH
+            ));
         }
 
         final var frequency = new ConnectionFrequencyHostResolver(plugin);
         plugin.getServer().getPluginManager().registerEvents(frequency, plugin);
-        plugin.getLogger().info("Server host source: config('%s') over auto-detection by player connections."
-                .formatted(CONFIG_PATH));
+        plugin.getLogger().info(String.format(
+                "Server host source: config('%s') over auto-detection by player connections.",
+                CONFIG_PATH
+        ));
 
         return new CompositeServerHostResolver(configured, frequency);
     }
